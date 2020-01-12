@@ -1,0 +1,117 @@
+* {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    font-family: "Arial Black", Gadget, sans-serif;
+    cursor: default;
+    user-select: none;
+}
+
+body {
+    background-color: rgb(50, 100, 150);
+    color: #EEEEEE;
+}
+
+.bottom-menu {
+    display: flex;
+    position: absolute;
+    bottom: 0;
+    height: 25%;
+    width: 100%;
+}
+
+.box {
+    display: flex;
+    border-radius: 5px;
+    border: 2px solid #EEEEEE;
+    background: rgb(54,135,207);
+    background: radial-gradient(circle at left top, rgba(54,135,207,1) 0%, rgba(17,17,23,1) 100%);
+    box-shadow: inset 0 0 10px #000000;
+    margin: 1px;
+    padding: 10px;
+    flex-direction: column;
+    text-shadow: 1px 1px 0 black; 
+}
+
+.left {
+    width: 25%;
+    color: rgb(179, 179, 179);
+}
+
+.right {
+    width: 75%;
+}
+
+.row {
+    display: grid;
+    align-items: center;
+
+    flex-grow: 1;
+    font-size: 30px;
+}
+
+.header {
+    font-size: 16px;
+    color: rgb(179, 179, 179);
+}
+
+.right .row {
+    grid-template-columns: 50% 25% 25%;
+}
+
+.ready {
+    color: #EEEEEE;
+}
+
+.ready:hover {
+    cursor: pointer;
+}
+
+.selected {
+    animation: flash 1s linear infinite;
+}
+
+@keyframes flash {
+    50% {
+        opacity: 0;
+    }
+}
+
+.close {
+    top: 0;
+    right: 0;
+    font-size: 30px;
+    text-align: right;
+    width: 50px;
+    width: 100%;
+}
+
+.close::before {
+    content: "×"
+}
+
+.secondary-menu {
+    display: none;
+    /* position: absolute;
+    height: 100%;
+    left: 20% */
+}
+
+.progress-bar {
+    background-color: gray;
+    height: 25%;
+}
+
+.progress-bar-filling {
+    width: 0%;
+    height: 100%;
+    background-color: seagreen;
+}
+
+/* .hp {
+
+}
+
+.mp {
+
+} */
