@@ -1,13 +1,16 @@
 import {
     fromEvent,
     interval,
-    merge,
     animationFrameScheduler,
+    Subject,
 } from "rxjs";
 import {
-    scan,
-    mapTo,
+    filter,
+    switchMap,
+    map,
     share,
+    tap,
+    withLatestFrom,
 } from "rxjs/operators";
 
 const values = {
@@ -17,6 +20,10 @@ const values = {
         { hp: 750, mp: 120, wait: 0 }
     ]
 };
+
+const primaryMenu = document.getElementById("primary-menu");
+const secondaryMenu = document.getElementById("secondary-menu");
+const secondaryBack = document.getElementById("secondary-back");
 
 const waitEls = Array(3).fill().map((_, i) => {
     return document
@@ -36,15 +43,58 @@ const clock$ = interval(0, animationFrameScheduler).pipe(share());
 
 // Add to the wait timer
 const waits$ = Array(3).fill().map((_, i) => {
-    return merge(
-        clock$.pipe(mapTo(1)),
-        fromEvent(characterEls[i], "click").pipe(mapTo(-1))
-    ).pipe(
-        scan((acc, val) => acc === 100 && val === -1 ? 0 : Math.min(acc + 1, 100), values.characters[i].wait),
-    );
+    const character = values.characters[i];
+    return clock$.pipe(map(() => Math.min(character.wait + 1, 100)));
 });
 
-// Set class on cahracters when wait timer is ready
+const selectedCharater$ = new Subject();
+
+const characterClick$ = Array(3).fill().map((_, i) => {
+    const el = characterEls[i];
+    const character = values.characters[i];
+    const wait$ = waits$[i]
+    return fromEvent(el, "click").pipe(
+        withLatestFrom(wait$),
+        filter(([_, wait]) => wait === 100),
+        tap(() => {
+            selectedCharater$.next(character)
+        })
+    )
+});
+
+selectedCharater$.pipe(
+    tap((character) => {
+        characterEls.forEach((el) => setSelected(el, false));
+        if (character) {
+            const el = characterEls[values.characters.indexOf(character)];
+            setSelected(el, true);
+            show(secondaryMenu);
+            hide(primaryMenu);
+        } else {
+            hide(secondaryMenu);
+            show(primaryMenu);            
+        }
+    })
+).subscribe();
+
+fromEvent(secondaryBack, "click").pipe(
+    tap(() => selectedCharater$.next(null))
+).subscribe();
+
+fromEvent(document, "click").pipe(
+    filter(event => event.target.classList.contains("action")),
+    withLatestFrom(selectedCharater$),
+    tap(([_, character]) => {
+        character.wait = 0;
+        selectedCharater$.next(null);
+    })
+).subscribe();
+
+const characterSubs = Array(3).fill().map((_, i) => {
+    return characterClick$[i].subscribe();
+});
+
+// Character name is no longer grayed out when timer is full
 const waitSubs = waits$.map((wait$, i) =>{
     return wait$.subscribe((timer) => {
         setReady(characterEls[i], timer === 100);
@@ -58,6 +108,22 @@ function setReady(element, isReady) {
     } else {
         element.classList.remove("ready");
     }
+}
+
+function setSelected(element, isSelected) {
+    if (isSelected) {
+        element.classList.add("selected");
+    } else {
+        element.classList.remove("selected");
+    }   
+}
+
+function hide(el) {
+    el.classList.add("hide");
+}
+
+function show(el) {
+    el.classList.remove("hide");
 }
 
 function draw() {

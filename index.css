@@ -68,12 +68,12 @@ body {
 }
 
 .selected {
-    animation: flash 1s linear infinite;
+    animation: flash 1.5s linear infinite;
 }
 
 @keyframes flash {
     50% {
-        opacity: 0;
+        opacity: .2;
     }
 }
 
@@ -91,10 +91,17 @@ body {
 }
 
 .secondary-menu {
-    display: none;
     /* position: absolute;
     height: 100%;
     left: 20% */
+}
+
+.show {
+
+}
+
+.hide {
+    display: none;
 }
 
 .progress-bar {
