@@ -10,7 +10,7 @@
 }
 
 body {
-    background-color: rgb(50, 100, 150);
+    background-color: rgb(128, 141, 165);
     color: #EEEEEE;
     overflow: hidden;
 }
@@ -23,13 +23,16 @@ body {
 
 .top {
     position: fixed;
+    display: flex;
     height: 70%;
+    left: 0;
+    right: 0;
 }
 
 .bottom {
     position: fixed;
     top: 70%;
-    left: 0px;
+    left: 0;
     right: 2px;
     bottom: 2px;
 }
@@ -76,6 +79,7 @@ body {
 
 .ready {
     color: #EEEEEE;
+    opacity: 1.0 !important;
 }
 
 .ready:hover {
@@ -113,3 +117,58 @@ body {
     background-color: seagreen;
 }
 
+.sprite {
+    width: 15vh;
+    height: 15vh;
+    display: inline-block;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    opacity: 0.3;
+}
+
+.sprite-selected {
+    animation: flash 1.25s linear infinite;
+}
+
+.sprite-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    width: 100%;
+    flex: 1;
+}
+
+.hero {
+    background-color: darkgreen;
+}
+
+.enemy {
+    background-color: darkred;
+}
+
+.enemies {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    padding-left: 10px;
+
+}
+
+.heroes {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    padding-right: 5px;
+}
+
+.heroes > .sprite-wrapper {
+    align-items: flex-end;
+}
+
+#secondary-back {
+    text-align: right;
+}

@@ -9,13 +9,24 @@
 <body>
     <link rel="stylesheet" type="text/css" href="index.css">
     <div class="container">
-        <div class="top">hi</div>
+        <div class="top">
+            <div class="enemies">
+                <div class="sprite-wrapper" id="enemy-0"><div class="sprite enemy">Enemy One</div></div>
+                <div class="sprite-wrapper" id="enemy-1"><div class="sprite enemy">Enemy Two</div></div>
+                <div class="sprite-wrapper" id="enemy-2"><div class="sprite enemy">Enemy Three</div></div>
+            </div>
+            <div class="heroes">
+                <div class="sprite-wrapper" id="hero-0"><div class="sprite hero">Hero One</div></div>
+                <div class="sprite-wrapper" id="hero-1"><div class="sprite hero">Hero Two</div></div>
+                <div class="sprite-wrapper" id="hero-2"><div class="sprite hero">Hero Three</div></div>
+            </div>
+        </div>
         <div class="bottom">
             <div class="left box">
                 <div class="row header">NAME</div>
-                <div id="character-name-0" class="row">Name 1</div>
-                <div id="character-name-1" class="row">Name 2</div>
-                <div id="character-name-2" class="row">Name 3</div>
+                <div id="hero-name-0" class="row">Hero 1</div>
+                <div id="hero-name-1" class="row">Hero 2</div>
+                <div id="hero-name-2" class="row">Hero 3</div>
             </div>
 
             <div id="primary-menu" class="right box show">
@@ -25,7 +36,7 @@
                     <div class="header">WAIT</div>
                 </div>
 
-                <div id="character-0-stats" class="row">
+                <div id="hero-0-stats" class="row">
                     <div class="hp">200 / 1250</div>
                     <div class="mp">50</div>
                     <div class="progress-bar">
@@ -33,7 +44,7 @@
                     </div>
                 </div>
 
-                <div id="character-1-stats" class="row">
+                <div id="hero-1-stats" class="row">
                     <div class="hp">201 / 1250</div>
                     <div class="mp">50</div>
                     <div class="progress-bar">
@@ -41,7 +52,7 @@
                     </div>
                 </div>
 
-                <div id="character-2-stats" class="row">
+                <div id="hero-2-stats" class="row">
                     <div class="hp">202 / 1250</div>
                     <div class="mp">50</div>
                     <div class="progress-bar">
@@ -51,10 +62,10 @@
             </div>
 
             <div id="secondary-menu" class="right box hide">
-                <div id="secondary-back" class="row ready">Back</div>
-                <div class="row action ready">Action 1</div>
-                <div class="row action ready">Action 2</div>
-                <div class="row action ready">Action 3</div>
+                <div id="secondary-back" class="row"><div></div><div></div><div class="ready">Back</div></div>
+                <div class="row action ready">Attack</div>
+                <div class="row action ready">Magic</div>
+                <div class="row action ready">Item</div>
             </div>
 
         </div>
