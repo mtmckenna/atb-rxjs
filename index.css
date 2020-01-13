@@ -2,26 +2,42 @@
     box-sizing: border-box;
     padding: 0;
     margin: 0;
+    border: 0;
     font-family: "Arial Black", Gadget, sans-serif;
     cursor: default;
     user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
     background-color: rgb(50, 100, 150);
     color: #EEEEEE;
+    overflow: hidden;
 }
 
-.bottom-menu {
+.container {
     display: flex;
-    position: absolute;
-    bottom: 0;
-    height: 25%;
-    width: 100%;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.top {
+    position: fixed;
+    height: 70%;
+}
+
+.bottom {
+    position: fixed;
+    top: 70%;
+    left: 0px;
+    right: 2px;
+    bottom: 2px;
 }
 
 .box {
-    display: flex;
+    position: absolute;
+    display: grid;
+    height: 100%;
     border-radius: 5px;
     border: 2px solid #EEEEEE;
     background: rgb(54,135,207);
@@ -29,7 +45,6 @@ body {
     box-shadow: inset 0 0 10px #000000;
     margin: 1px;
     padding: 10px;
-    flex-direction: column;
     text-shadow: 1px 1px 0 black; 
 }
 
@@ -45,9 +60,9 @@ body {
 .row {
     display: grid;
     align-items: center;
-
     flex-grow: 1;
-    font-size: 30px;
+    font-size: 20px;
+    white-space: nowrap;
 }
 
 .header {
@@ -56,7 +71,7 @@ body {
 }
 
 .right .row {
-    grid-template-columns: 50% 25% 25%;
+    grid-template-columns: 2fr 1fr 1fr;
 }
 
 .ready {
@@ -68,7 +83,7 @@ body {
 }
 
 .selected {
-    animation: flash 1.5s linear infinite;
+    animation: flash 1.25s linear infinite;
 }
 
 @keyframes flash {
@@ -77,31 +92,14 @@ body {
     }
 }
 
-.close {
-    top: 0;
-    right: 0;
-    font-size: 30px;
-    text-align: right;
-    width: 50px;
-    width: 100%;
-}
-
-.close::before {
-    content: "×"
-}
-
-.secondary-menu {
-    /* position: absolute;
-    height: 100%;
-    left: 20% */
+.hide {
+    left: -100%;
+    transition: .75s;
 }
 
 .show {
-
-}
-
-.hide {
-    display: none;
+    transition: .75s;
+    left: 25%;
 }
 
 .progress-bar {
@@ -115,10 +113,3 @@ body {
     background-color: seagreen;
 }
 
-/* .hp {
-
-}
-
-.mp {
-
-} */

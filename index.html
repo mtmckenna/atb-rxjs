@@ -1,55 +1,66 @@
+<!DOCTYPE html>
 <html>
+
+<head>
+    <title>ATB in RxJS</title>
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+</head>
 
 <body>
     <link rel="stylesheet" type="text/css" href="index.css">
+    <div class="container">
+        <div class="top">hi</div>
+        <div class="bottom">
+            <div class="left box">
+                <div class="row header">NAME</div>
+                <div id="character-name-0" class="row">Name 1</div>
+                <div id="character-name-1" class="row">Name 2</div>
+                <div id="character-name-2" class="row">Name 3</div>
+            </div>
+
+            <div id="primary-menu" class="right box show">
+                <div class="row">
+                    <div class="header">HP</div>
+                    <div class="header">MP</div>
+                    <div class="header">WAIT</div>
+                </div>
+
+                <div id="character-0-stats" class="row">
+                    <div class="hp">200 / 1250</div>
+                    <div class="mp">50</div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-filling"></div>
+                    </div>
+                </div>
+
+                <div id="character-1-stats" class="row">
+                    <div class="hp">201 / 1250</div>
+                    <div class="mp">50</div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-filling"></div>
+                    </div>
+                </div>
+
+                <div id="character-2-stats" class="row">
+                    <div class="hp">202 / 1250</div>
+                    <div class="mp">50</div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-filling"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="secondary-menu" class="right box hide">
+                <div id="secondary-back" class="row ready">Back</div>
+                <div class="row action ready">Action 1</div>
+                <div class="row action ready">Action 2</div>
+                <div class="row action ready">Action 3</div>
+            </div>
+
+        </div>
+    </div>
 </body>
 
-<div class="bottom-menu">
-    <div class="left box">
-        <div class="row header">NAME</div>
-        <div id="character-name-0" class="row">Name 1</div>
-        <div id="character-name-1" class="row">Name 2</div>
-        <div id="character-name-2" class="row">Name 3</div>
-    </div>
-    <div id="secondary-menu" class="right box hide">
-        <div id="secondary-back" class="row ready">Back</div>
-        <div class="row action ready">Action 1</div>
-        <div class="row action ready">Action 2</div>
-        <div class="row action ready">Action 3</div>        
-    </div>
-    <div id="primary-menu" class="right box">
-        <div class="row">
-            <div class="header">HP</div>
-            <div class="header">MP</div>
-            <div class="header">WAIT</div>
-        </div>
-
-        <div id="character-0-stats" class="row">
-            <div class="hp">200 / 1250</div>
-            <div class="mp">50</div>
-            <div class="progress-bar">
-                <div class="progress-bar-filling"></div>
-            </div>
-        </div>
-
-        <div id="character-1-stats" class="row">
-            <div class="hp">201 / 1250</div>
-            <div class="mp">50</div>
-            <div class="progress-bar">
-                <div class="progress-bar-filling"></div>
-            </div>
-        </div>
-
-        <div id="character-2-stats" class="row">
-            <div class="hp">202 / 1250</div>
-            <div class="mp">50</div>
-            <div class="progress-bar">
-                <div class="progress-bar-filling"></div>
-            </div>  
-        </div>
-
-    </div>
-</div>
-
 <script src="./index.js"></script>
+
 </html>

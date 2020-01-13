@@ -16,7 +16,7 @@ import {
 const values = {
     characters: [
         { hp: 1250, mp: 75, wait: 10 },
-        { hp: 475, mp: 200, wait: 50 },
+        { hp: 475, mp: 200, wait: 90 },
         { hp: 750, mp: 120, wait: 0 }
     ]
 };
@@ -44,7 +44,7 @@ const clock$ = interval(0, animationFrameScheduler).pipe(share());
 // Add to the wait timer
 const waits$ = Array(3).fill().map((_, i) => {
     const character = values.characters[i];
-    return clock$.pipe(map(() => Math.min(character.wait + 1, 100)));
+    return clock$.pipe(map(() => Math.min(character.wait + .25, 100)));
 });
 
 const selectedCharater$ = new Subject();
@@ -69,10 +69,8 @@ selectedCharater$.pipe(
             const el = characterEls[values.characters.indexOf(character)];
             setSelected(el, true);
             show(secondaryMenu);
-            hide(primaryMenu);
         } else {
             hide(secondaryMenu);
-            show(primaryMenu);            
         }
     })
 ).subscribe();
@@ -119,11 +117,13 @@ function setSelected(element, isSelected) {
 }
 
 function hide(el) {
+    el.classList.remove("show");
     el.classList.add("hide");
 }
 
 function show(el) {
     el.classList.remove("hide");
+    el.classList.add("show");
 }
 
 function draw() {
