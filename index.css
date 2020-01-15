@@ -125,7 +125,6 @@ body {
     justify-content: center;
     align-items: center;
     text-align: center;
-    opacity: 0.3;
 }
 
 .sprite-selected {
@@ -142,10 +141,13 @@ body {
 
 .hero {
     background-color: darkgreen;
+    opacity: 0.3;
+
 }
 
 .enemy {
     background-color: darkred;
+    border: 2px solid transparent;
 }
 
 .enemies {
@@ -169,6 +171,14 @@ body {
     align-items: flex-end;
 }
 
-#secondary-back {
-    text-align: right;
+.secondary-back {
+    text-align: center;
+}
+
+.selectable {
+    transition: .75s;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 2px solid rgb(240, 235, 105);
+    box-shadow: inset 0 0 10px #000000;
 }

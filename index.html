@@ -11,14 +11,14 @@
     <div class="container">
         <div class="top">
             <div class="enemies">
-                <div class="sprite-wrapper" id="enemy-0"><div class="sprite enemy">Enemy One</div></div>
-                <div class="sprite-wrapper" id="enemy-1"><div class="sprite enemy">Enemy Two</div></div>
-                <div class="sprite-wrapper" id="enemy-2"><div class="sprite enemy">Enemy Three</div></div>
+                <div class="sprite-wrapper" id="enemy-0"><div class="sprite enemy" data-type="enemy" data-id="0">Enemy One</div></div>
+                <div class="sprite-wrapper" id="enemy-1"><div class="sprite enemy" data-type="enemy" data-id="1">Enemy Two</div></div>
+                <div class="sprite-wrapper" id="enemy-2"><div class="sprite enemy" data-type="enemy" data-id="2">Enemy Three</div></div>
             </div>
             <div class="heroes">
-                <div class="sprite-wrapper" id="hero-0"><div class="sprite hero">Hero One</div></div>
-                <div class="sprite-wrapper" id="hero-1"><div class="sprite hero">Hero Two</div></div>
-                <div class="sprite-wrapper" id="hero-2"><div class="sprite hero">Hero Three</div></div>
+                <div class="sprite-wrapper" id="hero-0"><div class="sprite hero" data-type="hero" data-id="0">Hero One</div></div>
+                <div class="sprite-wrapper" id="hero-1"><div class="sprite hero" data-type="hero" data-id="1">Hero Two</div></div>
+                <div class="sprite-wrapper" id="hero-2"><div class="sprite hero" data-type="hero" data-id="2">Hero Three</div></div>
             </div>
         </div>
         <div class="bottom">
@@ -33,7 +33,7 @@
                 <div class="row">
                     <div class="header">HP</div>
                     <div class="header">MP</div>
-                    <div class="header">WAIT</div>
+                    <div class="header">TIME</div>
                 </div>
 
                 <div id="hero-0-stats" class="row">
@@ -62,10 +62,14 @@
             </div>
 
             <div id="secondary-menu" class="right box hide">
-                <div id="secondary-back" class="row"><div></div><div></div><div class="ready">Back</div></div>
-                <div class="row action ready">Attack</div>
-                <div class="row action ready">Magic</div>
-                <div class="row action ready">Item</div>
+                <div class="row secondary-back"><div></div><div></div><div class="ready">Back</div></div>
+                <div class="row action ready" data-action="attack">Attack</div>
+                <div class="row action ready" data-action="magic">Magic</div>
+                <div class="row action ready" data-action="item">Item</div>
+            </div>
+
+            <div id="select-menu" class="right box hide">
+                <div class="row secondary-back"><div></div><div></div><div class="ready">Back</div></div>
             </div>
 
         </div>
