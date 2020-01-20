@@ -16,73 +16,31 @@ import {
     withLatestFrom,
 } from "rxjs/operators";
 
+import {
+    waitFillingEls,
+    heroNameEls,
+    hpEls,
+    mpEls,
+    heroSpriteEls,
+    enemySpriteEls,
+    secondaryMenuEls,
+    selectMenuEls
+} from "./elements";
+
 const state = {
     heroes: [
-        { name: "Terra",  maxHp: 1500, hp: 1250, mp: 75,  wait: 10, magic: ["Ice", "Bolt"], items: ["Potion"] },
-        { name: "Locke",  maxHp: 600,  hp: 475,  mp: 200, wait: 90, magic: ["Fire"],        items: [] },
-        { name: "Celes",  maxHp: 250,  hp: 750,  mp: 120, wait: 0,  magic: ["Restore"],     items: ["Potion", "Potion"] }
+        { name: "Terra",  el: heroSpriteEls[0], maxHp: 1500, hp: 1250, mp: 75,  wait: 10, magic: ["Ice", "Bolt"], items: ["Potion"] },
+        { name: "Locke",  el: heroSpriteEls[1], maxHp: 600,  hp: 475,  mp: 200, wait: 90, magic: ["Fire"],        items: [] },
+        { name: "Celes",  el: heroSpriteEls[2], maxHp: 250,  hp: 750,  mp: 120, wait: 0,  magic: ["Restore"],     items: ["Potion", "Potion"] }
     ],
     enemies: [
-        { name: "Wererat", maxHp: 1500, hp: 1250, mp: 75,  wait: 0, magic: ["Ice", "Bolt"], items: ["Potion"] },
-        { name: "Cactuar", maxHp: 600,  hp: 475,  mp: 200, wait: 0, magic: ["Fire"],        items: [] },
-        { name: "Ultros",  maxHp: 250,  hp: 750,  mp: 120, wait: 90,  magic: ["Restore"],   items: ["Potion", "Potion"] }
+        { name: "Wererat", el: enemySpriteEls[0], maxHp: 1500, hp: 1250, mp: 75,  wait: 0, magic: ["Ice", "Bolt"], items: ["Potion"] },
+        { name: "Cactuar", el: enemySpriteEls[1], maxHp: 600,  hp: 475,  mp: 200, wait: 0, magic: ["Fire"],        items: [] },
+        { name: "Ultros",  el: enemySpriteEls[2], maxHp: 250,  hp: 750,  mp: 120, wait: 90,  magic: ["Restore"],   items: ["Potion", "Potion"] }
     ]
 };
 
-const secondaryMenu = document.getElementById("secondary-menu");
-const selectMenu = document.getElementById("select-menu");
 
-const waitEls = Array(3).fill().map((_, i) => {
-    return document
-        .getElementById(`hero-${i}-stats`)
-        .getElementsByClassName("progress-bar")[0];
-});
-
-const waitFillingEls = Array(3).fill().map((_, i) => {
-    return waitEls[i].getElementsByClassName("progress-bar-filling")[0];
-});
-
-const heroNameEls = Array(3).fill().map((_, i) => {
-    return document.getElementById(`hero-name-${i}`);
-});
-
-const hpEls = Array(3).fill().map((_, i) => {
-    return document
-    .getElementById(`hero-${i}-stats`)
-    .getElementsByClassName("hp")[0];
-});
-
-const mpEls = Array(3).fill().map((_, i) => {
-    return document
-    .getElementById(`hero-${i}-stats`)
-    .getElementsByClassName("mp")[0];
-});
-
-const heroSpriteEls = Array(3).fill().map((_, i) => {
-    return document
-    .getElementById(`hero-${i}`)
-    .getElementsByClassName("sprite")[0];
-});
-
-const enemySpriteEls = Array(3).fill().map((_, i) => {
-    return document
-    .getElementById(`enemy-${i}`)
-    .getElementsByClassName("sprite")[0];
-});
-
-const secondaryMenuEls = Array(3).fill().map((_, i) => {
-    const menu = secondaryMenu.cloneNode(true);
-    menu.id = `secondary-menu-hero-${i}`;
-    secondaryMenu.parentNode.insertBefore(menu, menu.nextSibling);
-    return menu;
-});
-
-const selectMenuEls = Array(3).fill().map((_, i) => {
-    const menu = selectMenu.cloneNode(true);
-    menu.id = `select-menu-hero-${i}`;
-    selectMenu.parentNode.insertBefore(menu, menu.nextSibling);
-    return menu;
-});
 
 const clock$ = interval(0, animationFrameScheduler).pipe(share());
 
@@ -139,7 +97,7 @@ const attack$ = action$.pipe(
     filter(([el, _]) => isAction(el, "attack")),
     tap(([el, _]) => prepareAction(el)),
     map(([_, hero]) => hero),
-    switchMap(hero => sinkClicks$.pipe(take(1), map((event) => [hero, event.target]), takeUntil(nonSinkClicks$))),
+    switchMap(hero => sinkClicks$.pipe(take(1), map(event => [hero, event.target]), takeUntil(nonSinkClicks$))),
     map(([hero, el]) => ({ source: hero, sink: characterFromElement(el) }))
 );
 
@@ -180,11 +138,38 @@ function isAction(el, type) {
     return el.dataset.action === type;
 }
 
+function getElementPosition(el) {
+    const pos = el.getBoundingClientRect();
+    return { left: pos.left, top: pos.top };
+}
+
 function attack(source, sink) {
     console.log(`${source.name} attacks ${sink.name}...`);
     source.wait = 0;
     unhighlightHeroes();
     hideSecondaryMenus();
+    const sourcePos = getElementPosition(source.el);
+    const sinkPos = getElementPosition(sink.el);
+    const x = sinkPos.left - sourcePos.left;
+    const y = sinkPos.top - sourcePos.top;
+    setTranslate(source.el, x, y);
+
+    singleDoneTransformingStream$(source.el).pipe(
+        tap(() => unsetTranslate(source.el)),
+        switchMap(() => singleDoneTransformingStream$(source.el))
+    ).subscribe();
+}
+
+function singleDoneTransformingStream$(el) {
+    return fromEvent(el, "transitionend").pipe(filter((event) => event.propertyName === "transform"), take(1));
+}
+
+function setTranslate(el, left, top) {
+    el.style.transform = `translate(${left}px, ${top}px)`;
+}
+
+function unsetTranslate(el) {
+    el.style.transform = null;
 }
 
 function highlightHeroes() {
