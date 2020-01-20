@@ -2,7 +2,7 @@ import {
     fromEvent,
     interval,
     animationFrameScheduler,
-    Subject,
+    BehaviorSubject,
 } from "rxjs";
 
 import {
@@ -11,6 +11,8 @@ import {
     share,
     switchMap,
     tap,
+    take,
+    takeUntil,
     withLatestFrom,
 } from "rxjs/operators";
 
@@ -84,51 +86,67 @@ const selectMenuEls = Array(3).fill().map((_, i) => {
 
 const clock$ = interval(0, animationFrameScheduler).pipe(share());
 
-// Add to the wait timer
 const waits$ = Array(3).fill().map((_, i) => {
     const hero = state.heroes[i];
     return clock$.pipe(map(() => Math.min(hero.wait + .25, 100)), share());
 });
 
-const selectedHero$ = new Subject();
-selectedHero$.next(null);
+const currentHero$ = new BehaviorSubject();
+currentHero$.next(null);
 
-const heroClick$ = Array(3).fill().map((_, i) => {
+const action$ = new BehaviorSubject();
+action$.next(null);
+
+Array(3).fill().map((_, i) => {
     const el = heroNameEls[i];
     const spriteEl = heroSpriteEls[i];
     const hero = state.heroes[i];
     const wait$ = waits$[i]
     return fromEvent([el, spriteEl], "click").pipe(
-        withLatestFrom(wait$),
-        filter(([_, wait]) => wait === 100),
-        tap(() => selectedHero$.next(hero))
-    ).subscribe();
+        withLatestFrom(wait$, action$),
+        filter(([_, wait, action]) => wait === 100 && !action),
+    ).subscribe(() => currentHero$.next(hero));
 });
 
-selectedHero$.pipe(filter(hero => !!hero), tap(selectHero),     tap(showSecondaryMenu)).subscribe();
-selectedHero$.pipe(filter(hero => !hero),  tap(unselectHeroes), tap(hideSecondaryMenus)).subscribe();
+currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
+    highlightHero(hero);
+    showSecondaryMenu(hero);
+});
+
+currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
+    unhighlightAllCharacters();
+    hideSecondaryMenus();
+});
 
 fromEvent(secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]), "click")
-.pipe(tap(() => selectedHero$.next(null))).subscribe();
+.subscribe(() => {
+    currentHero$.next(null);
+    action$.next(null);
+});
 
-const action$ = fromEvent(document, "click").pipe(
+fromEvent(document, "click").pipe(
     filter(event => event.target.classList.contains("action")),
-    withLatestFrom(selectedHero$),
-    map(([event, hero]) => [event.target, hero])
-);
+    withLatestFrom(currentHero$),
+    map(([event, hero]) => [event.target, hero]),
+).subscribe(([event, hero]) => action$.next([event, hero]));
 
-const sinkClicks$ = fromEvent(document, "click").pipe(filter(event => event.target.classList.contains("selectable")));
+const selectableClicks$ = fromEvent(document, "click").pipe(filter(event => event.target.classList.contains("selectable")));
+const sinkClicks$ = selectableClicks$.pipe(filter(event => event.target.classList.contains("sinkable")));
+const nonSinkClicks$ = selectableClicks$.pipe(filter(event => !event.target.classList.contains("sinkable")));
 
 const attack$ = action$.pipe(
+    filter(action => !!action),
     filter(([el, _]) => isAction(el, "attack")),
     tap(([el, _]) => prepareAction(el)),
     map(([_, hero]) => hero),
-    switchMap(hero => sinkClicks$.pipe(map((event) => [hero, event]))),
-    map(([hero, event]) => ({ source: hero, sink: state.enemies[enemySpriteEls.indexOf(event.target)] }))
+    switchMap(hero => sinkClicks$.pipe(take(1), map((event) => [hero, event.target]), takeUntil(nonSinkClicks$))),
+    map(([hero, el]) => ({ source: hero, sink: characterFromElement(el) }))
 );
 
 attack$.subscribe(({ source, sink }) => {
     attack(source, sink);
+    action$.next(null);
+    currentHero$.next(null);
 });
 
 waits$.forEach((wait$, i) => {
@@ -138,6 +156,16 @@ waits$.forEach((wait$, i) => {
     wait$.pipe(filter(time => time <   100)).subscribe(() => unsetHeroReady(i));
 });
 
+function characterFromElement(el) {
+    const characters = isHero(el) ? state.heroes : state.enemies;
+    const characterEls = isHero(el) ? heroSpriteEls : enemySpriteEls;
+    return characters[characterEls.indexOf(el)];
+}
+
+function isHero(el) {
+    return el.classList.contains("hero");
+}
+
 function setTime(hero, time) {
     hero.wait = time;
 }
@@ -145,6 +173,7 @@ function setTime(hero, time) {
 function prepareAction(el) {
     setSelected(el);
     highlightEnemies();
+    highlightHeroes();
 }
 
 function isAction(el, type) {
@@ -154,18 +183,30 @@ function isAction(el, type) {
 function attack(source, sink) {
     console.log(`${source.name} attacks ${sink.name}...`);
     source.wait = 0;
-    unselectHeroes();
+    unhighlightHeroes();
     hideSecondaryMenus();
 }
 
-function unselectHeroes() {
+function highlightHeroes() {
     const els = [heroNameEls, heroSpriteEls, secondaryMenuEls, selectMenuEls].flat();
+    els.forEach(setSelectable);
+    els.forEach(setSinkable);
+}
+
+function unhighlightHeroes() {
+    const els = [heroNameEls, heroSpriteEls, secondaryMenuEls, selectMenuEls].flat();
+    els.forEach(unsetSelectable);
     els.forEach(unsetSelected);
+    els.forEach(unsetSinkable);
+}
+
+function unhighlightAllCharacters() {
+    unhighlightHeroes();
     unhighlightEnemies();
 }
 
-function selectHero(hero) {
-    unselectHeroes();
+function highlightHero(hero) {
+    unhighlightHeroes();
     const el = heroNameEls[state.heroes.indexOf(hero)];
     const spriteEl = heroSpriteEls[state.heroes.indexOf(hero)];
     setSelected(el);
@@ -173,33 +214,35 @@ function selectHero(hero) {
 }
 
 function highlightEnemies() {
-    enemySpriteEls.forEach(setSelectable)
+    enemySpriteEls.forEach(setSelectable);
+    enemySpriteEls.forEach(setSinkable);
 }
 
 function unhighlightEnemies() {
     enemySpriteEls.forEach(unsetSelectable);
+    enemySpriteEls.forEach(unsetSinkable);
 }
 
 function setHeroReady(heroIndex) {
     const heroName = heroNameEls[heroIndex];
-    const Heroesprite = heroSpriteEls[heroIndex];
-    setReady(heroName);
-    setReady(Heroesprite);
+    const heroSprite = heroSpriteEls[heroIndex];
+    setSelectable(heroName);
+    setSelectable(heroSprite);
 }
 
 function unsetHeroReady(heroIndex) {
     const heroName = heroNameEls[heroIndex];
-    const Heroesprite = heroSpriteEls[heroIndex];
-    unsetReady(heroName);
-    unsetReady(Heroesprite);
+    const heroSprite = heroSpriteEls[heroIndex];
+    unsetSelectable(heroName);
+    unsetSelectable(heroSprite);
 }
 
-function setReady(element) {
-    element.classList.add("ready");
+function unsetSinkable(element) {
+    element.classList.remove("sinkable");
 }
 
-function unsetReady(element) {
-    element.classList.remove("ready");
+function setSinkable(element) {
+    element.classList.add("sinkable");
 }
 
 function setSelected(element) {
