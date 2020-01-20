@@ -1,3 +1,5 @@
+// Fix bug where clicking on name of hero during attack does stuff
+
 import {
     fromEvent,
     interval,
@@ -40,11 +42,9 @@ const state = {
     ]
 };
 
-
-
 const clock$ = interval(0, animationFrameScheduler).pipe(share());
 
-const waits$ = Array(3).fill().map((_, i) => {
+const timers$ = Array(3).fill().map((_, i) => {
     const hero = state.heroes[i];
     return clock$.pipe(map(() => Math.min(hero.wait + .25, 100)), share());
 });
@@ -59,10 +59,10 @@ Array(3).fill().map((_, i) => {
     const el = heroNameEls[i];
     const spriteEl = heroSpriteEls[i];
     const hero = state.heroes[i];
-    const wait$ = waits$[i]
+    const timer$ = timers$[i]
     return fromEvent([el, spriteEl], "click").pipe(
-        withLatestFrom(wait$, action$),
-        filter(([_, wait, action]) => wait === 100 && !action),
+        withLatestFrom(timer$, action$),
+        filter(([_, timer, action]) => timer === 100 && !action),
     ).subscribe(() => currentHero$.next(hero));
 });
 
@@ -107,21 +107,17 @@ attack$.subscribe(({ source, sink }) => {
     currentHero$.next(null);
 });
 
-waits$.forEach((wait$, i) => {
+timers$.forEach((timer$, i) => {
     const hero = state.heroes[i];
-    wait$.subscribe(time => setTime(hero, time));
-    wait$.pipe(filter(time => time === 100)).subscribe(() => setHeroReady(i));
-    wait$.pipe(filter(time => time <   100)).subscribe(() => unsetHeroReady(i));
+    timer$.subscribe(time => setTime(hero, time));
+    timer$.pipe(filter(time => time === 100)).subscribe(() => setHeroReady(i));
+    timer$.pipe(filter(time => time <   100)).subscribe(() => unsetHeroReady(i));
 });
 
 function characterFromElement(el) {
     const characters = isHero(el) ? state.heroes : state.enemies;
     const characterEls = isHero(el) ? heroSpriteEls : enemySpriteEls;
     return characters[characterEls.indexOf(el)];
-}
-
-function isHero(el) {
-    return el.classList.contains("hero");
 }
 
 function setTime(hero, time) {
@@ -132,6 +128,10 @@ function prepareAction(el) {
     setSelected(el);
     highlightEnemies();
     highlightHeroes();
+}
+
+function isHero(el) {
+    return el.classList.contains("hero");
 }
 
 function isAction(el, type) {

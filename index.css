@@ -88,7 +88,7 @@ body {
 }
 
 .hide {
-    left: -100%;
+    left: -100% !important;
     transition: .75s;
 }
 
@@ -183,4 +183,17 @@ body {
 
 .sprite.enemy.selectable.sinkable {
     border: 2px solid red;
+}
+
+#pause-box {
+    position: absolute;
+    height: 100px;
+    z-index: 2;
+    width: 25%;
+    left: 50%;
+    margin-left: -12.5%;
+    margin-top: 10%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
