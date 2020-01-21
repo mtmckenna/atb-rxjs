@@ -5,6 +5,7 @@ import {
     interval,
     animationFrameScheduler,
     BehaviorSubject,
+    zip,
 } from "rxjs";
 
 import {
@@ -26,28 +27,12 @@ import {
     heroSpriteEls,
     enemySpriteEls,
     secondaryMenuEls,
-    selectMenuEls
+    selectMenuEls,
+    pauseEl,
+    unpauseEl
 } from "./elements";
 
-const state = {
-    heroes: [
-        { name: "Terra",  el: heroSpriteEls[0], maxHp: 1500, hp: 1250, mp: 75,  wait: 10, magic: ["Ice", "Bolt"], items: ["Potion"] },
-        { name: "Locke",  el: heroSpriteEls[1], maxHp: 600,  hp: 475,  mp: 200, wait: 90, magic: ["Fire"],        items: [] },
-        { name: "Celes",  el: heroSpriteEls[2], maxHp: 250,  hp: 750,  mp: 120, wait: 0,  magic: ["Restore"],     items: ["Potion", "Potion"] }
-    ],
-    enemies: [
-        { name: "Wererat", el: enemySpriteEls[0], maxHp: 1500, hp: 1250, mp: 75,  wait: 0, magic: ["Ice", "Bolt"], items: ["Potion"] },
-        { name: "Cactuar", el: enemySpriteEls[1], maxHp: 600,  hp: 475,  mp: 200, wait: 0, magic: ["Fire"],        items: [] },
-        { name: "Ultros",  el: enemySpriteEls[2], maxHp: 250,  hp: 750,  mp: 120, wait: 90,  magic: ["Restore"],   items: ["Potion", "Potion"] }
-    ]
-};
-
-const clock$ = interval(0, animationFrameScheduler).pipe(share());
-
-const timers$ = Array(3).fill().map((_, i) => {
-    const hero = state.heroes[i];
-    return clock$.pipe(map(() => Math.min(hero.wait + .25, 100)), share());
-});
+import state from "./state";
 
 const currentHero$ = new BehaviorSubject();
 currentHero$.next(null);
@@ -55,14 +40,61 @@ currentHero$.next(null);
 const action$ = new BehaviorSubject();
 action$.next(null);
 
-Array(3).fill().map((_, i) => {
+const pause$ = new BehaviorSubject();
+pause$.next(false);
+
+const clock$ = interval(0, animationFrameScheduler).pipe(
+    withLatestFrom(pause$),
+    filter(([_, paused]) => !paused),
+    map(([clock, _]) => clock),
+    share()
+    );
+
+const wait$ = clock$.pipe(
+    withLatestFrom(action$),
+    map(([_, action]) => action ? true : false),
+);
+
+const timers$ = state.heroes.map(hero => {
+    return zip(clock$, wait$).pipe(
+        filter(([_, wait]) => !wait),
+        map(() => Math.min(hero.wait + .25, 100))
+        );
+});
+
+const clicks$ = fromEvent(document, "click").pipe(
+    withLatestFrom(pause$),
+    filter(([_, paused]) => !paused),
+    map(([event, _]) => event),
+    share()
+);
+
+const pauseClick$ = fromEvent(pauseEl, "click").pipe(share());
+const unpauseClick$ = pauseClick$.pipe(take(1), switchMap(() => fromEvent(unpauseEl, "click")));
+const selectableClicks$ = clicks$.pipe(filter(event => event.target.classList.contains("selectable")));
+const sinkClicks$ = selectableClicks$.pipe(filter(event => event.target.classList.contains("sinkable")));
+const nonSinkClicks$ = selectableClicks$.pipe(filter(event => !event.target.classList.contains("sinkable")));
+
+pauseClick$.subscribe(() => {
+    pause$.next(true);
+    setShrink(pauseEl);
+    unsetShrink(unpauseEl);
+});
+
+unpauseClick$.subscribe(() => {
+    pause$.next(false);
+    setShrink(unpauseEl);
+    unsetShrink(pauseEl);
+});
+
+state.heroes.forEach((_, i) => {
     const el = heroNameEls[i];
     const spriteEl = heroSpriteEls[i];
     const hero = state.heroes[i];
     const timer$ = timers$[i]
-    return fromEvent([el, spriteEl], "click").pipe(
+    return clicksForElements$([el, spriteEl]).pipe(
         withLatestFrom(timer$, action$),
-        filter(([_, timer, action]) => timer === 100 && !action),
+        filter(([_, timer, action]) => timer === 100 && !action)
     ).subscribe(() => currentHero$.next(hero));
 });
 
@@ -76,21 +108,17 @@ currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
     hideSecondaryMenus();
 });
 
-fromEvent(secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]), "click")
+clicksForElements$(secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]))
 .subscribe(() => {
     currentHero$.next(null);
     action$.next(null);
 });
 
-fromEvent(document, "click").pipe(
-    filter(event => event.target.classList.contains("action")),
+clicks$.pipe(
+    filter(event => event.target && event.target.classList.contains("action")),
     withLatestFrom(currentHero$),
     map(([event, hero]) => [event.target, hero]),
 ).subscribe(([event, hero]) => action$.next([event, hero]));
-
-const selectableClicks$ = fromEvent(document, "click").pipe(filter(event => event.target.classList.contains("selectable")));
-const sinkClicks$ = selectableClicks$.pipe(filter(event => event.target.classList.contains("sinkable")));
-const nonSinkClicks$ = selectableClicks$.pipe(filter(event => !event.target.classList.contains("sinkable")));
 
 const attack$ = action$.pipe(
     filter(action => !!action),
@@ -113,6 +141,11 @@ timers$.forEach((timer$, i) => {
     timer$.pipe(filter(time => time === 100)).subscribe(() => setHeroReady(i));
     timer$.pipe(filter(time => time <   100)).subscribe(() => unsetHeroReady(i));
 });
+
+function clicksForElements$(elements) {
+    if (!Array.isArray(elements)) elements = [elements];
+    return clicks$.pipe(filter(event => elements.includes(event.target)));
+}
 
 function characterFromElement(el) {
     const characters = isHero(el) ? state.heroes : state.enemies;
@@ -248,18 +281,32 @@ function unsetSelectable(element) {
     element.classList.remove("selectable");
 }
 
+function setHide(element) {
+    element.classList.add("hide");    
+}
+
+function unsetHide(element) {
+    element.classList.remove("hide");    
+}
+
+function setShrink(element) {
+    element.classList.add("shrink");    
+}
+
+function unsetShrink(element) {
+    element.classList.remove("shrink");    
+}
+
 function hideSecondaryMenus() {
     secondaryMenuEls.forEach((el) => {
-        el.classList.remove("show");
-        el.classList.add("hide");    
+        setHide(el);
     });
 }
 
 function showSecondaryMenu(hero) {
     hideSecondaryMenus();
     const el = secondaryMenuEls[state.heroes.indexOf(hero)];
-    el.classList.remove("hide");
-    el.classList.add("show");
+    unsetHide(el)
 }
 
 function draw() {

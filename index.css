@@ -77,6 +77,15 @@ body {
     grid-template-columns: 2fr 1fr 1fr;
 }
 
+.right.box {
+    left: 25%;
+    transition: .75s;
+}
+
+.up {
+    top: -100%;
+}
+
 .selected {
     animation: flash 1.25s linear infinite;
 }
@@ -89,12 +98,10 @@ body {
 
 .hide {
     left: -100% !important;
-    transition: .75s;
 }
 
-.show {
-    transition: .75s;
-    left: 25%;
+.shrink {
+    transform: scale(0) !important;
 }
 
 .progress-bar {
@@ -185,15 +192,26 @@ body {
     border: 2px solid red;
 }
 
-#pause-box {
+.overlay {
     position: absolute;
-    height: 100px;
     z-index: 2;
-    width: 25%;
-    left: 50%;
-    margin-left: -12.5%;
-    margin-top: 10%;
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+#unpause {
+    height: 100px;
+    width: 25%;
+    left: 50%;
+    margin-left: -12.5%;
+    margin-top: 5%;
+}
+
+#pause {
+    left: 50%;
+    margin-left: -20px;
+    height: 40px;
+    width: 40px;
+    margin-top: 5%;
 }

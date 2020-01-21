@@ -53,7 +53,13 @@ const selectMenuEls = Array(3).fill().map((_, i) => {
     return menu;
 });
 
+const unpauseEl = document.getElementById("unpause");
+
+const pauseEl = document.getElementById("pause");
+
 export {
+    pauseEl,
+    unpauseEl,
     waitEls,
     waitFillingEls,
     heroNameEls,

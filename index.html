@@ -8,7 +8,8 @@
 
 <body>
     <link rel="stylesheet" type="text/css" href="index.css">
-    <div id="pause-box" class="box hide">Paused</div>
+    <div id="unpause" class="overlay box shrink selectable">Paused</div>
+    <div id="pause" class="overlay box selectable">||</div>
     <div class="container">
         <div class="top">
             <div class="enemies">
@@ -30,7 +31,7 @@
                 <div id="hero-name-2" class="row">Hero 3</div>
             </div>
 
-            <div id="primary-menu" class="right box show">
+            <div id="primary-menu" class="right box">
                 <div class="row">
                     <div class="header">HP</div>
                     <div class="header">MP</div>
@@ -62,7 +63,7 @@
                 </div>
             </div>
 
-            <div id="secondary-menu" class="right box hide">
+            <div id="secondary-menu" class="right box hide up">
                 <div class="row"><div></div><div></div><div class="secondary-back selectable">Back</div></div>
                 <div class="row action selectable" data-action="attack">Attack</div>
                 <div class="row action selectable" data-action="magic">Magic</div>
