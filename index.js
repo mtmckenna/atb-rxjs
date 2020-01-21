@@ -1,11 +1,13 @@
 // Fix bug where clicking on name of hero during attack does stuff
 
 import {
+    concat,
     fromEvent,
     interval,
     animationFrameScheduler,
     BehaviorSubject,
     zip,
+    Observable,
 } from "rxjs";
 
 import {
@@ -40,30 +42,31 @@ currentHero$.next(null);
 const action$ = new BehaviorSubject();
 action$.next(null);
 
-const pause$ = new BehaviorSubject();
-pause$.next(false);
+const paused$ = new BehaviorSubject();
+paused$.next(false);
+
+const animating$ = new BehaviorSubject();
+animating$.next(false);
 
 const clock$ = interval(0, animationFrameScheduler).pipe(
-    withLatestFrom(pause$),
+    withLatestFrom(paused$),
     filter(([_, paused]) => !paused),
     map(([clock, _]) => clock),
     share()
     );
 
 const wait$ = clock$.pipe(
-    withLatestFrom(action$),
-    map(([_, action]) => action ? true : false),
+    withLatestFrom(action$, animating$),
+    map(([_, action, animation]) => (action || animation) ? true : false),
+    filter((b) => !b),
 );
 
 const timers$ = state.heroes.map(hero => {
-    return zip(clock$, wait$).pipe(
-        filter(([_, wait]) => !wait),
-        map(() => Math.min(hero.wait + .25, 100))
-        );
+    return zip(clock$, wait$).pipe(map(() => Math.min(hero.wait + .15, 100)));
 });
 
 const clicks$ = fromEvent(document, "click").pipe(
-    withLatestFrom(pause$),
+    withLatestFrom(paused$),
     filter(([_, paused]) => !paused),
     map(([event, _]) => event),
     share()
@@ -76,13 +79,13 @@ const sinkClicks$ = selectableClicks$.pipe(filter(event => event.target.classLis
 const nonSinkClicks$ = selectableClicks$.pipe(filter(event => !event.target.classList.contains("sinkable")));
 
 pauseClick$.subscribe(() => {
-    pause$.next(true);
+    paused$.next(true);
     setShrink(pauseEl);
     unsetShrink(unpauseEl);
 });
 
 unpauseClick$.subscribe(() => {
-    pause$.next(false);
+    paused$.next(false);
     setShrink(unpauseEl);
     unsetShrink(pauseEl);
 });
@@ -185,16 +188,37 @@ function attack(source, sink) {
     const sinkPos = getElementPosition(sink.el);
     const x = sinkPos.left - sourcePos.left;
     const y = sinkPos.top - sourcePos.top;
-    setTranslate(source.el, x, y);
 
-    singleDoneTransformingStream$(source.el).pipe(
-        tap(() => unsetTranslate(source.el)),
-        switchMap(() => singleDoneTransformingStream$(source.el))
-    ).subscribe();
+    const toSink$ = transformElementTo$(source.el, x, y);
+    const fromSink$ = untransformElement$(source.el);
+    const animation$ = concat(toSink$, fromSink$);
+    animation$.subscribe(() => animating$.next(true), null, () => animating$.next(false));
 }
 
-function singleDoneTransformingStream$(el) {
-    return fromEvent(el, "transitionend").pipe(filter((event) => event.propertyName === "transform"), take(1));
+function untransformElement$(el) {
+    return new Observable(subscriber => {
+        unsetTranslate(el);
+        subscriber.next(el);
+        doneTransforming$(el).subscribe(() => {
+            subscriber.next(null);
+            subscriber.complete(null);
+        });
+    });
+}
+
+function transformElementTo$(el, x, y) {
+    return new Observable(subscriber => {
+        setTranslate(el, x, y);
+        subscriber.next(el);
+        doneTransforming$(el).subscribe(() => {
+            subscriber.next(null);
+            subscriber.complete(null);
+        });
+    });
+}
+
+function doneTransforming$(el) {
+    return fromEvent(el, "transitionend").pipe(filter((event) => event.propertyName === "transform"));
 }
 
 function setTranslate(el, left, top) {
