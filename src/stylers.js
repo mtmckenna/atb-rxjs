@@ -3,7 +3,11 @@ import {
     heroNameEls,
     heroSpriteEls,
     selectMenuEls,
-    secondaryMenuEls
+    secondaryMenuEls,
+    groundWrapperEl,
+    groundEl,
+    spriteWrapperEls,
+    backgroundEl
 } from "./elements";
 
 function setTranslate(el, left, top) {
@@ -137,6 +141,33 @@ function setBackgroundImage(el, img) {
     el.style.backgroundImage = img;
 }
 
+function resize() {
+    const groundSize = groundWrapperEl.getBoundingClientRect();
+    const { height } = groundSize;
+    const cosx = Math.cos(deg2rad(45));
+    const rotatedGroundHeight = height * cosx;
+    const groundOffset = height - rotatedGroundHeight;
+    moveTop(groundEl, groundOffset / 2);
+    Array.from(spriteWrapperEls).forEach((el) => setHeight(el, rotatedGroundHeight));
+    setHeight(backgroundEl, groundOffset);
+}
+
+function deg2rad(degrees) {
+    return degrees * Math.PI / 180;
+}
+
+function updateWaitWidth(el, percentage) {
+    if (parseInt(el.style.width) !== percentage) {
+        el.style.width = `${percentage}%`;
+    }
+}
+
+function updateIfDifferent(element, value) {
+    if (element.textContent !== value) {
+        element.textContent = value;
+    }
+}
+
 export {
     setTranslate,
     unsetTranslate,
@@ -164,4 +195,7 @@ export {
     moveTop,
     setHeight,
     setBackgroundImage,
+    resize,
+    updateIfDifferent,
+    updateWaitWidth,
 }

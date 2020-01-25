@@ -34,10 +34,6 @@ import {
     unpauseEl,
     selectedAtbEl,
     atbModeEls,
-    groundWrapperEl,
-    groundEl,
-    spriteWrapperEls,
-    backgroundEl,
 } from "./elements";
 
 import {
@@ -53,10 +49,11 @@ import {
     unsetShrink,
     showSecondaryMenu,
     hideSecondaryMenus,
-    moveTop,
-    setHeight,
     unhighlightEnemies,
     unhighlightAllCharacters,
+    resize,
+    updateIfDifferent,
+    updateWaitWidth,
 } from "./stylers";
 
 import state from "./state";
@@ -279,33 +276,6 @@ function draw() {
     mpEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].mp}`));
     heroNameEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
     updateIfDifferent(selectedAtbEl, state.settings.atbMode);
-}
-
-function updateWaitWidth(el, percentage) {
-    if (parseInt(el.style.width) !== percentage) {
-        el.style.width = `${percentage}%`;
-    }
-}
-
-function updateIfDifferent(element, value) {
-    if (element.textContent !== value) {
-        element.textContent = value;
-    }
-}
-
-function resize() {
-    const groundSize = groundWrapperEl.getBoundingClientRect();
-    const { height } = groundSize;
-    const cosx = Math.cos(deg2rad(45));
-    const rotatedGroundHeight = height * cosx;
-    const groundOffset = height - rotatedGroundHeight;
-    moveTop(groundEl, groundOffset / 2);
-    Array.from(spriteWrapperEls).forEach((el) => setHeight(el, rotatedGroundHeight));
-    setHeight(backgroundEl, groundOffset);
-}
-
-function deg2rad(degrees) {
-    return degrees * Math.PI / 180;
 }
 
 requestAnimationFrame(draw);
