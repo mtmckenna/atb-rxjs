@@ -7,7 +7,6 @@ import {
     animationFrameScheduler,
     BehaviorSubject,
     Observable,
-    config,
 } from "rxjs";
 
 import {
@@ -45,8 +44,6 @@ import {
     setTranslate,
     unsetTranslate,
     highlightHeroes,
-    unhighlightHeroes,
-    unhighlightAllCharacters,
     highlightHero,
     highlightEnemies,
     setHeroReady,
@@ -58,7 +55,8 @@ import {
     hideSecondaryMenus,
     moveTop,
     setHeight,
-    setBackgroundImage,
+    unhighlightEnemies,
+    unhighlightAllCharacters,
 } from "./stylers";
 
 import state from "./state";
@@ -121,13 +119,13 @@ const wait$ = clock$.pipe(
 const timers$ = state.heroes.map(hero => {
     return clock$.pipe(
         withLatestFrom(wait$),
-        // Don't tick timer if there is an ATB reason to wait
-        filter(([_, wait]) => !wait),
-        map(() => Math.min(hero.wait + .15, 100))
+        // Add 0 to timer if we're waiting...
+        map(([_, wait]) => wait ? 0 : .25),
+        map((increase) => Math.min(hero.wait + increase, 100))
     );
 });
 
-resize$.subscribe(() => resize());
+resize$.subscribe(resize);
 
 pauseClick$.subscribe(() => {
     paused$.next(true);
@@ -235,7 +233,7 @@ function getElementPosition(el) {
 function attack(source, sink) {
     console.log(`${source.name} attacks ${sink.name}...`);
     source.wait = 0;
-    unhighlightHeroes();
+    unhighlightEnemies();
     hideSecondaryMenus();
     const sourcePos = getElementPosition(source.el);
     const sinkPos = getElementPosition(sink.el);

@@ -27,6 +27,13 @@ function unhighlightHeroes() {
     els.forEach(unsetSinkable);
 }
 
+function unhighlightHero(heroIndex) {
+    const els = [heroSpriteEls[heroIndex], heroNameEls[heroIndex]];
+    els.forEach(unsetSelectable);
+    els.forEach(unsetSelected);
+    els.forEach(unsetSinkable);
+}
+
 function unhighlightAllCharacters() {
     unhighlightHeroes();
     unhighlightEnemies();
@@ -134,6 +141,7 @@ export {
     setTranslate,
     unsetTranslate,
     highlightHeroes,
+    unhighlightHero,
     unhighlightHeroes,
     unhighlightAllCharacters,
     highlightHero,
