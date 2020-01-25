@@ -115,7 +115,19 @@ function hideSecondaryMenus() {
 function showSecondaryMenu(heroIndex) {
     hideSecondaryMenus();
     const el = secondaryMenuEls[heroIndex];
-    unsetHide(el)
+    unsetHide(el);
+}
+
+function moveTop(el, amount) {
+    el.style.top = `${amount}px`;
+}
+
+function setHeight(el, height) {
+    el.style.height = `${height}px`;
+}
+
+function setBackgroundImage(el, img) {
+    el.style.backgroundImage = img;
 }
 
 export {
@@ -141,4 +153,7 @@ export {
     unsetShrink,
     hideSecondaryMenus,
     showSecondaryMenu,
+    moveTop,
+    setHeight,
+    setBackgroundImage,
 }

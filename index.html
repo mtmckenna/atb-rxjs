@@ -10,7 +10,7 @@
     <link rel="stylesheet" type="text/css" href="./src/index.css">
     <div class="overlay-wrapper">
         <div id="unpause" class="overlay box shrink selectable">
-            <div class="unselectable">PAUSED</div>
+            <div class="header">PAUSED</div>
             <div>&nbsp;</div>
             <div class="atb-mode selectable" data-mode="Recommended">Recommended</div>
             <div class="atb-mode selectable" data-mode="Active">Active</div>
@@ -20,16 +20,16 @@
     </div>
     <div class="container">
         <div class="top">
-            <div class="ground-wrapper"><div class="ground"></div></div>
-            <div class="enemies">
-                <div class="sprite-wrapper" id="enemy-0"><div class="sprite enemy" data-type="enemy" data-id="0">Enemy One</div></div>
-                <div class="sprite-wrapper" id="enemy-1"><div class="sprite enemy" data-type="enemy" data-id="1">Enemy Two</div></div>
-                <div class="sprite-wrapper" id="enemy-2"><div class="sprite enemy" data-type="enemy" data-id="2">Enemy Three</div></div>
+            <div class="ground-wrapper"><div class="background"></div><div class="ground"></div></div>
+            <div class="enemies sprites">
+                <div class="sprite-wrapper" id="enemy-0"><div class="sprite enemy sprite-deathknight" data-type="enemy" data-id="0"></div></div>
+                <div class="sprite-wrapper" id="enemy-1"><div class="sprite enemy sprite-goblin"      data-type="enemy" data-id="1"></div></div>
+                <div class="sprite-wrapper" id="enemy-2"><div class="sprite enemy sprite-skeleton"    data-type="enemy" data-id="2"></div></div>
             </div>
-            <div class="heroes">
-                <div class="sprite-wrapper" id="hero-0"><div class="sprite hero" data-type="hero" data-id="0">Hero One</div></div>
-                <div class="sprite-wrapper" id="hero-1"><div class="sprite hero" data-type="hero" data-id="1">Hero Two</div></div>
-                <div class="sprite-wrapper" id="hero-2"><div class="sprite hero" data-type="hero" data-id="2">Hero Three</div></div>
+            <div class="heroes sprites">
+                <div class="sprite-wrapper" id="hero-0"><div class="sprite hero sprite-wizard"  data-type="hero" data-id="0"></div></div>
+                <div class="sprite-wrapper" id="hero-1"><div class="sprite hero sprite-firefox" data-type="hero" data-id="1"></div></div>
+                <div class="sprite-wrapper" id="hero-2"><div class="sprite hero sprite-warrior" data-type="hero" data-id="2"></div></div>
             </div>
         </div>
         <div class="bottom">
@@ -82,7 +82,6 @@
             <div id="select-menu" class="right box hide">
                 <div class="row secondary-back"><div></div><div></div><div class="selectable">Back</div></div>
             </div>
-
         </div>
     </div>
 </body>

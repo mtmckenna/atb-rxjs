@@ -59,7 +59,15 @@ const pauseEl = document.getElementById("pause");
 
 const selectedAtbEl = document.getElementById("selected-atb");
 
-const atbModes = document.getElementsByClassName("atb-mode");
+const atbModeEls = document.getElementsByClassName("atb-mode");
+
+const groundWrapperEl = document.getElementsByClassName("ground-wrapper")[0];
+
+const groundEl = document.getElementsByClassName("ground")[0];
+
+const spriteWrapperEls = document.getElementsByClassName("sprites");
+
+const backgroundEl = document.getElementsByClassName("background")[0];
 
 export {
     pauseEl,
@@ -74,5 +82,9 @@ export {
     secondaryMenuEls,
     selectMenuEls,
     selectedAtbEl,
-    atbModes
+    atbModeEls,
+    groundWrapperEl,
+    groundEl,
+    spriteWrapperEls,
+    backgroundEl,
 };

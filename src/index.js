@@ -7,6 +7,7 @@ import {
     animationFrameScheduler,
     BehaviorSubject,
     Observable,
+    config,
 } from "rxjs";
 
 import {
@@ -33,7 +34,11 @@ import {
     pauseEl,
     unpauseEl,
     selectedAtbEl,
-    atbModes
+    atbModeEls,
+    groundWrapperEl,
+    groundEl,
+    spriteWrapperEls,
+    backgroundEl,
 } from "./elements";
 
 import {
@@ -51,6 +56,9 @@ import {
     unsetShrink,
     showSecondaryMenu,
     hideSecondaryMenus,
+    moveTop,
+    setHeight,
+    setBackgroundImage,
 } from "./stylers";
 
 import state from "./state";
@@ -88,6 +96,7 @@ const clicks$ = fromEvent(document, "click").pipe(
     share()
 );
 
+const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
 const selectableClicks$ = clicks$.pipe(filter(event => event.target.classList.contains("selectable")));
 
@@ -98,7 +107,7 @@ const sinkClicks$ = selectableClicks$.pipe(filter(event => event.target.classLis
 const nonSinkClicks$ = selectableClicks$.pipe(filter(event => !event.target.classList.contains("sinkable")));
 
 // Current ATB mode
-const atbMode$ = fromEvent(atbModes, "click").pipe(
+const atbMode$ = fromEvent(atbModeEls, "click").pipe(
     pluck("target", "dataset", "mode"),
     startWith(state.settings.atbMode)
 );
@@ -117,6 +126,8 @@ const timers$ = state.heroes.map(hero => {
         map(() => Math.min(hero.wait + .15, 100))
     );
 });
+
+resize$.subscribe(() => resize());
 
 pauseClick$.subscribe(() => {
     paused$.next(true);
@@ -268,9 +279,7 @@ function draw() {
     waitFillingEls.forEach((el, i) => updateWaitWidth(el, state.heroes[i].wait));
     hpEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].hp} / ${state.heroes[i].maxHp}`));
     mpEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].mp}`));
-    heroSpriteEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
     heroNameEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
-    enemySpriteEls.forEach((el, i) => updateIfDifferent(el, `${state.enemies[i].name}`));
     updateIfDifferent(selectedAtbEl, state.settings.atbMode);
 }
 
@@ -286,4 +295,20 @@ function updateIfDifferent(element, value) {
     }
 }
 
-requestAnimationFrame(draw)
+function resize() {
+    const groundSize = groundWrapperEl.getBoundingClientRect();
+    const { height } = groundSize;
+    const cosx = Math.cos(deg2rad(45));
+    const rotatedGroundHeight = height * cosx;
+    const groundOffset = height - rotatedGroundHeight;
+    moveTop(groundEl, groundOffset / 2);
+    Array.from(spriteWrapperEls).forEach((el) => setHeight(el, rotatedGroundHeight));
+    setHeight(backgroundEl, groundOffset);
+}
+
+function deg2rad(degrees) {
+    return degrees * Math.PI / 180;
+}
+
+requestAnimationFrame(draw);
+resize();

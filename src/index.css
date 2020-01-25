@@ -24,6 +24,7 @@ body {
 .top {
     position: fixed;
     display: flex;
+    align-items: flex-end;
     height: 70%;
     left: 0;
     right: 0;
@@ -87,9 +88,7 @@ body {
 }
 
 @keyframes flash {
-    50% {
-        opacity: .2;
-    }
+    50% { opacity: .2; }
 }
 
 .hide {
@@ -114,14 +113,18 @@ body {
 .sprite {
     width: 15vh;
     height: 15vh;
-    display: inline-block;
+    background-size: contain;
+    background-repeat: no-repeat;
     display: flex;
+    filter: drop-shadow(0 0 0 #fff);
     justify-content: center;
     align-items: center;
     text-align: center;
     border-radius: 5px;
     position: absolute;
     transition: 1s;
+    image-rendering: pixelated;
+    z-index: 2;
 }
 
 .sprite-selected {
@@ -136,14 +139,35 @@ body {
     flex: 1;
 }
 
-.hero {
-    background-color: darkgreen;
-    opacity: 0.3;
+.sprite-firefox {
+    background-image: url("../images/firefox.png");
+}
 
+.sprite-warrior {
+    background-image: url("../images/warrior.png");
+}
+
+.sprite-wizard {
+    background-image: url("../images/wizard.png");
+}
+
+.sprite-deathknight {
+    background-image: url("../images/deathknight.png");
+}
+
+.sprite-goblin {
+    background-image: url("../images/goblin.png");
+}
+
+.sprite-skeleton {
+    background-image: url("../images/skeleton.png");
+}
+
+.hero {
+    transform: scaleX(-1);
 }
 
 .enemy {
-    background-color: darkred;
     border: 2px solid transparent;
     color: rgb(179, 179, 179);
 }
@@ -154,7 +178,6 @@ body {
     justify-content: center;
     flex: 1;
     padding-left: 10px;
-
 }
 
 .heroes {
@@ -181,37 +204,48 @@ body {
     color: #EEEEEE;
     transition: .75s;
     cursor: pointer;
-    opacity: 1.0 !important;
 }
 
 .unselectable {
-    opacity: 0.8 !important;
+    color: rgb(179, 179, 179);
 }
 
 .selectable:hover {
     cursor: pointer;
 }
 
-.sprite.enemy.selectable.sinkable {
-    border: 2px solid red;
+.sprite.selectable {
+    filter: drop-shadow(0 0 10px #fff);
 }
 
 .ground-wrapper {
     position: absolute;
     height: 100%;
     width: 100%;
+    /* Line below works around the issue where Safari cuts off characters bc of the 3d ground */
+    overflow: hidden; 
 }
 
 .ground {
     position: absolute;
     height: 100%;
     width: 100%;
-    transform: rotateX(45deg);
+    transform: rotate3d(1, 0, 0, 45deg);
     background: linear-gradient(
         rgba(84, 130, 93, 1.0), 
         rgba(0, 0, 0, 0.0)
       ),
       url("../images/grass.png");
+    z-index: 0;
+}
+
+.background {
+    position: absolute;
+    background-size: auto 100%;
+    background-image: url("../images/houses.png");
+    width: 100%;
+    top: 3%;
+    z-index: 1;
 }
 
 .overlay {
