@@ -10,7 +10,7 @@
 }
 
 body {
-    background-color: rgb(128, 141, 165);
+    background-color: rgb(153, 178, 224);
     color: #EEEEEE;
     overflow: hidden;
 }
@@ -80,10 +80,6 @@ body {
 .right.box {
     left: 25%;
     transition: .75s;
-}
-
-.up {
-    top: -100%;
 }
 
 .selected {
@@ -177,11 +173,19 @@ body {
     text-align: center;
 }
 
+.secondary-menu {
+    width: 50%;
+}
+
 .selectable {
     color: #EEEEEE;
     transition: .75s;
     cursor: pointer;
     opacity: 1.0 !important;
+}
+
+.unselectable {
+    opacity: 0.8 !important;
 }
 
 .selectable:hover {
@@ -192,26 +196,46 @@ body {
     border: 2px solid red;
 }
 
-.overlay {
+.ground-wrapper {
     position: absolute;
+    height: 100%;
+    width: 100%;
+}
+
+.ground {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    transform: rotateX(45deg);
+    background: linear-gradient(
+        rgba(84, 130, 93, 1.0), 
+        rgba(0, 0, 0, 0.0)
+      ),
+      url("../images/grass.png");
+}
+
+.overlay {
+    height: initial;
     z-index: 2;
+    margin-top: 25px;
     display: flex;
     justify-content: center;
     align-items: center;
+    flex-direction: column;
+    pointer-events: auto;
 }
 
-#unpause {
-    height: 100px;
-    width: 25%;
-    left: 50%;
-    margin-left: -12.5%;
-    margin-top: 5%;
+.overlay-wrapper {
+    position: fixed;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    z-index: 2;
+    pointer-events: none
 }
 
-#pause {
-    left: 50%;
-    margin-left: -20px;
-    height: 40px;
-    width: 40px;
-    margin-top: 5%;
+#selected-atb {
+    cursor: pointer;
 }

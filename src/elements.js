@@ -57,6 +57,10 @@ const unpauseEl = document.getElementById("unpause");
 
 const pauseEl = document.getElementById("pause");
 
+const selectedAtbEl = document.getElementById("selected-atb");
+
+const atbModes = document.getElementsByClassName("atb-mode");
+
 export {
     pauseEl,
     unpauseEl,
@@ -68,5 +72,7 @@ export {
     heroSpriteEls,
     enemySpriteEls,
     secondaryMenuEls,
-    selectMenuEls
+    selectMenuEls,
+    selectedAtbEl,
+    atbModes
 };

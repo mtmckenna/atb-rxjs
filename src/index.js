@@ -6,19 +6,20 @@ import {
     interval,
     animationFrameScheduler,
     BehaviorSubject,
-    zip,
     Observable,
 } from "rxjs";
 
 import {
     filter,
     map,
+    pluck,
     share,
     switchMap,
     tap,
     take,
     takeUntil,
     withLatestFrom,
+    startWith,
 } from "rxjs/operators";
 
 import {
@@ -29,10 +30,28 @@ import {
     heroSpriteEls,
     enemySpriteEls,
     secondaryMenuEls,
-    selectMenuEls,
     pauseEl,
-    unpauseEl
+    unpauseEl,
+    selectedAtbEl,
+    atbModes
 } from "./elements";
+
+import {
+    setTranslate,
+    unsetTranslate,
+    highlightHeroes,
+    unhighlightHeroes,
+    unhighlightAllCharacters,
+    highlightHero,
+    highlightEnemies,
+    setHeroReady,
+    unsetHeroReady,
+    setSelected,
+    setShrink,
+    unsetShrink,
+    showSecondaryMenu,
+    hideSecondaryMenus,
+} from "./stylers";
 
 import state from "./state";
 
@@ -48,22 +67,19 @@ paused$.next(false);
 const animating$ = new BehaviorSubject();
 animating$.next(false);
 
+// Map of ATB modes to a list of streams that can pause the timer from filling
+// i.e. Active mode never stops, Recommended stops when the characters are 
+// animating, and Wait stops when either the characters are animating or
+// the player has selected an action (e.g. attack)
+const atbMap = { Active: [], Recommended: [animating$], Wait: [animating$, action$] };
+
 const clock$ = interval(0, animationFrameScheduler).pipe(
     withLatestFrom(paused$),
+    // Don't emit if the game is paused
     filter(([_, paused]) => !paused),
     map(([clock, _]) => clock),
     share()
-    );
-
-const wait$ = clock$.pipe(
-    withLatestFrom(action$, animating$),
-    map(([_, action, animation]) => (action || animation) ? true : false),
-    filter((b) => !b),
 );
-
-const timers$ = state.heroes.map(hero => {
-    return zip(clock$, wait$).pipe(map(() => Math.min(hero.wait + .15, 100)));
-});
 
 const clicks$ = fromEvent(document, "click").pipe(
     withLatestFrom(paused$),
@@ -72,11 +88,35 @@ const clicks$ = fromEvent(document, "click").pipe(
     share()
 );
 
-const pauseClick$ = fromEvent(pauseEl, "click").pipe(share());
-const unpauseClick$ = pauseClick$.pipe(take(1), switchMap(() => fromEvent(unpauseEl, "click")));
+const pauseClick$ = fromEvent(pauseEl, "click");
 const selectableClicks$ = clicks$.pipe(filter(event => event.target.classList.contains("selectable")));
+
+// Any selectable element on which an action (e.g. attack, magic) can happen
 const sinkClicks$ = selectableClicks$.pipe(filter(event => event.target.classList.contains("sinkable")));
+
+// Any selectable element on which an action cannot happen
 const nonSinkClicks$ = selectableClicks$.pipe(filter(event => !event.target.classList.contains("sinkable")));
+
+// Current ATB mode
+const atbMode$ = fromEvent(atbModes, "click").pipe(
+    pluck("target", "dataset", "mode"),
+    startWith(state.settings.atbMode)
+);
+
+const wait$ = clock$.pipe(
+    withLatestFrom(atbMode$),
+    // Emit true if any of the things in this ATB mode that can cause the timer to pause are truthy
+    map(([_, mode]) => atbMap[mode].some(m => !!m.value)),
+);
+
+const timers$ = state.heroes.map(hero => {
+    return clock$.pipe(
+        withLatestFrom(wait$),
+        // Don't tick timer if there is an ATB reason to wait
+        filter(([_, wait]) => !wait),
+        map(() => Math.min(hero.wait + .15, 100))
+    );
+});
 
 pauseClick$.subscribe(() => {
     paused$.next(true);
@@ -84,7 +124,8 @@ pauseClick$.subscribe(() => {
     unsetShrink(unpauseEl);
 });
 
-unpauseClick$.subscribe(() => {
+atbMode$.subscribe(mode => {
+    state.settings.atbMode = mode;
     paused$.next(false);
     setShrink(unpauseEl);
     unsetShrink(pauseEl);
@@ -102,8 +143,9 @@ state.heroes.forEach((_, i) => {
 });
 
 currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
-    highlightHero(hero);
-    showSecondaryMenu(hero);
+    const index = state.heroes.indexOf(hero);
+    highlightHero(index);
+    showSecondaryMenu(index);
 });
 
 currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
@@ -218,119 +260,7 @@ function transformElementTo$(el, x, y) {
 }
 
 function doneTransforming$(el) {
-    return fromEvent(el, "transitionend").pipe(filter((event) => event.propertyName === "transform"));
-}
-
-function setTranslate(el, left, top) {
-    el.style.transform = `translate(${left}px, ${top}px)`;
-}
-
-function unsetTranslate(el) {
-    el.style.transform = null;
-}
-
-function highlightHeroes() {
-    const els = [heroNameEls, heroSpriteEls, secondaryMenuEls, selectMenuEls].flat();
-    els.forEach(setSelectable);
-    els.forEach(setSinkable);
-}
-
-function unhighlightHeroes() {
-    const els = [heroNameEls, heroSpriteEls, secondaryMenuEls, selectMenuEls].flat();
-    els.forEach(unsetSelectable);
-    els.forEach(unsetSelected);
-    els.forEach(unsetSinkable);
-}
-
-function unhighlightAllCharacters() {
-    unhighlightHeroes();
-    unhighlightEnemies();
-}
-
-function highlightHero(hero) {
-    unhighlightHeroes();
-    const el = heroNameEls[state.heroes.indexOf(hero)];
-    const spriteEl = heroSpriteEls[state.heroes.indexOf(hero)];
-    setSelected(el);
-    setSelected(spriteEl);
-}
-
-function highlightEnemies() {
-    enemySpriteEls.forEach(setSelectable);
-    enemySpriteEls.forEach(setSinkable);
-}
-
-function unhighlightEnemies() {
-    enemySpriteEls.forEach(unsetSelectable);
-    enemySpriteEls.forEach(unsetSinkable);
-}
-
-function setHeroReady(heroIndex) {
-    const heroName = heroNameEls[heroIndex];
-    const heroSprite = heroSpriteEls[heroIndex];
-    setSelectable(heroName);
-    setSelectable(heroSprite);
-}
-
-function unsetHeroReady(heroIndex) {
-    const heroName = heroNameEls[heroIndex];
-    const heroSprite = heroSpriteEls[heroIndex];
-    unsetSelectable(heroName);
-    unsetSelectable(heroSprite);
-}
-
-function unsetSinkable(element) {
-    element.classList.remove("sinkable");
-}
-
-function setSinkable(element) {
-    element.classList.add("sinkable");
-}
-
-function setSelected(element) {
-    element.classList.add("selected");
-}
-
-function unsetSelected(element) {
-    element.classList.remove("selected");
-    const children = Array.from(element.getElementsByClassName("selected"));
-    children.forEach((el) => el.classList.remove("selected"));
-}
-
-function setSelectable(element) {
-    element.classList.add("selectable");
-}
-
-function unsetSelectable(element) {
-    element.classList.remove("selectable");
-}
-
-function setHide(element) {
-    element.classList.add("hide");    
-}
-
-function unsetHide(element) {
-    element.classList.remove("hide");    
-}
-
-function setShrink(element) {
-    element.classList.add("shrink");    
-}
-
-function unsetShrink(element) {
-    element.classList.remove("shrink");    
-}
-
-function hideSecondaryMenus() {
-    secondaryMenuEls.forEach((el) => {
-        setHide(el);
-    });
-}
-
-function showSecondaryMenu(hero) {
-    hideSecondaryMenus();
-    const el = secondaryMenuEls[state.heroes.indexOf(hero)];
-    unsetHide(el)
+    return fromEvent(el, "transitionend").pipe(filter(event => event.propertyName === "transform"));
 }
 
 function draw() {
@@ -341,6 +271,7 @@ function draw() {
     heroSpriteEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
     heroNameEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
     enemySpriteEls.forEach((el, i) => updateIfDifferent(el, `${state.enemies[i].name}`));
+    updateIfDifferent(selectedAtbEl, state.settings.atbMode);
 }
 
 function updateWaitWidth(el, percentage) {

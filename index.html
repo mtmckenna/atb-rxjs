@@ -7,11 +7,20 @@
 </head>
 
 <body>
-    <link rel="stylesheet" type="text/css" href="index.css">
-    <div id="unpause" class="overlay box shrink selectable">Paused</div>
-    <div id="pause" class="overlay box selectable">||</div>
+    <link rel="stylesheet" type="text/css" href="./src/index.css">
+    <div class="overlay-wrapper">
+        <div id="unpause" class="overlay box shrink selectable">
+            <div class="unselectable">PAUSED</div>
+            <div>&nbsp;</div>
+            <div class="atb-mode selectable" data-mode="Recommended">Recommended</div>
+            <div class="atb-mode selectable" data-mode="Active">Active</div>
+            <div class="atb-mode selectable" data-mode="Wait">Wait</div>        
+        </div>
+        <div id="pause" class="overlay box selectable">ATB:<br /><span id="selected-atb">Mode</span></div>    
+    </div>
     <div class="container">
         <div class="top">
+            <div class="ground-wrapper"><div class="ground"></div></div>
             <div class="enemies">
                 <div class="sprite-wrapper" id="enemy-0"><div class="sprite enemy" data-type="enemy" data-id="0">Enemy One</div></div>
                 <div class="sprite-wrapper" id="enemy-1"><div class="sprite enemy" data-type="enemy" data-id="1">Enemy Two</div></div>
@@ -63,7 +72,7 @@
                 </div>
             </div>
 
-            <div id="secondary-menu" class="right box hide up">
+            <div id="secondary-menu" class="right box hide secondary-menu">
                 <div class="row"><div></div><div></div><div class="secondary-back selectable">Back</div></div>
                 <div class="row action selectable" data-action="attack">Attack</div>
                 <div class="row action selectable" data-action="magic">Magic</div>
@@ -78,6 +87,6 @@
     </div>
 </body>
 
-<script src="./index.js"></script>
+<script src="./src/index.js"></script>
 
 </html>
