@@ -18,6 +18,19 @@ function unsetTranslate(el) {
     el.style.transform = null;
 }
 
+function setAllCharactersAsSinkable() {
+    const els = [heroNameEls, heroSpriteEls, enemySpriteEls].flat();
+    els.forEach(setSelectable);    
+    els.forEach(setSinkable);    
+}
+
+function unsetAllCharactersAsSinkable() {
+    const els = [heroNameEls, heroSpriteEls, enemySpriteEls].flat();
+    els.forEach(unsetSelectable);    
+    els.forEach(unsetSinkable);    
+}
+
+// Do I need menus to ne selectable here?
 function highlightHeroes() {
     const els = [heroNameEls, heroSpriteEls, secondaryMenuEls, selectMenuEls].flat();
     els.forEach(setSelectable);
@@ -61,18 +74,30 @@ function unhighlightEnemies() {
     enemySpriteEls.forEach(unsetSinkable);
 }
 
+function setReady(el) {
+    el.classList.add("ready");
+}
+
+function unsetReady(el) {
+    el.classList.remove("ready");
+}
+
 function setHeroReady(heroIndex) {
     const heroName = heroNameEls[heroIndex];
     const heroSprite = heroSpriteEls[heroIndex];
-    setSelectable(heroName);
-    setSelectable(heroSprite);
+    [heroName, heroSprite].forEach(el => {
+        setSelectable(el);
+        setReady(el);
+    });
 }
 
 function unsetHeroReady(heroIndex) {
     const heroName = heroNameEls[heroIndex];
     const heroSprite = heroSpriteEls[heroIndex];
-    unsetSelectable(heroName);
-    unsetSelectable(heroSprite);
+    [heroName, heroSprite].forEach(el => {
+        unsetSelectable(el);
+        unsetReady(el);
+    });
 }
 
 function unsetSinkable(element) {
@@ -186,6 +211,8 @@ export {
     unsetSelectable,
     setSelected,
     unsetSelected,
+    setAllCharactersAsSinkable,
+    unsetAllCharactersAsSinkable,
     setHide,
     unsetHide,
     setShrink,

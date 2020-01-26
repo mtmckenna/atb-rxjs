@@ -1,4 +1,5 @@
 // Fix bug where clicking on name of hero during attack does stuff
+// Can't select hero as sink when their bar isn't 100%
 
 import {
     concat,
@@ -30,6 +31,7 @@ import {
     heroSpriteEls,
     enemySpriteEls,
     secondaryMenuEls,
+    secondaryMenuBackEls,
     pauseEl,
     unpauseEl,
     selectedAtbEl,
@@ -54,7 +56,15 @@ import {
     resize,
     updateIfDifferent,
     updateWaitWidth,
+    setAllCharactersAsSinkable,
+    unsetAllCharactersAsSinkable
 } from "./stylers";
+
+import {
+    isAction,
+    characterFromElement,
+    getElementPosition,
+} from "./helpers";
 
 import state from "./state";
 
@@ -87,8 +97,7 @@ const clock$ = interval(0, animationFrameScheduler).pipe(
 const clicks$ = fromEvent(document, "click").pipe(
     withLatestFrom(paused$),
     filter(([_, paused]) => !paused),
-    map(([event, _]) => event),
-    share()
+    map(([event, _]) => event)
 );
 
 const resize$ = fromEvent(window, "resize");
@@ -117,8 +126,8 @@ const timers$ = state.heroes.map(hero => {
     return clock$.pipe(
         withLatestFrom(wait$),
         // Add 0 to timer if we're waiting...
-        map(([_, wait]) => wait ? 0 : .25),
-        map((increase) => Math.min(hero.wait + increase, 100))
+        map(([_, wait]) => wait ? 0 : .1),
+        map(increase => Math.min(hero.wait + increase, 100))
     );
 });
 
@@ -159,8 +168,7 @@ currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
     hideSecondaryMenus();
 });
 
-clicksForElements$(secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]))
-.subscribe(() => {
+clicksForElements$(secondaryMenuBackEls).subscribe(() => {
     currentHero$.next(null);
     action$.next(null);
 });
@@ -169,12 +177,14 @@ clicks$.pipe(
     filter(event => event.target && event.target.classList.contains("action")),
     withLatestFrom(currentHero$),
     map(([event, hero]) => [event.target, hero]),
-).subscribe(([event, hero]) => action$.next([event, hero]));
+).subscribe(([el, hero]) => action$.next([el, hero]));
+
+action$.pipe(filter(action => !!action)).subscribe(setAllCharactersAsSinkable);
+action$.pipe(filter(action => !action)).subscribe(unsetAllCharactersAsSinkable);
 
 const attack$ = action$.pipe(
     filter(action => !!action),
     filter(([el, _]) => isAction(el, "attack")),
-    tap(([el, _]) => prepareAction(el)),
     map(([_, hero]) => hero),
     switchMap(hero => sinkClicks$.pipe(take(1), map(event => [hero, event.target]), takeUntil(nonSinkClicks$))),
     map(([hero, el]) => ({ source: hero, sink: characterFromElement(el) }))
@@ -188,7 +198,7 @@ attack$.subscribe(({ source, sink }) => {
 
 timers$.forEach((timer$, i) => {
     const hero = state.heroes[i];
-    timer$.subscribe(time => setTime(hero, time));
+    timer$.subscribe(time => hero.wait = time);
     timer$.pipe(filter(time => time === 100)).subscribe(() => setHeroReady(i));
     timer$.pipe(filter(time => time <   100)).subscribe(() => unsetHeroReady(i));
 });
@@ -196,35 +206,6 @@ timers$.forEach((timer$, i) => {
 function clicksForElements$(elements) {
     if (!Array.isArray(elements)) elements = [elements];
     return clicks$.pipe(filter(event => elements.includes(event.target)));
-}
-
-function characterFromElement(el) {
-    const characters = isHero(el) ? state.heroes : state.enemies;
-    const characterEls = isHero(el) ? heroSpriteEls : enemySpriteEls;
-    return characters[characterEls.indexOf(el)];
-}
-
-function setTime(hero, time) {
-    hero.wait = time;
-}
-
-function prepareAction(el) {
-    setSelected(el);
-    highlightEnemies();
-    highlightHeroes();
-}
-
-function isHero(el) {
-    return el.classList.contains("hero");
-}
-
-function isAction(el, type) {
-    return el.dataset.action === type;
-}
-
-function getElementPosition(el) {
-    const pos = el.getBoundingClientRect();
-    return { left: pos.left, top: pos.top };
 }
 
 function attack(source, sink) {
@@ -237,36 +218,23 @@ function attack(source, sink) {
     const x = sinkPos.left - sourcePos.left;
     const y = sinkPos.top - sourcePos.top;
 
-    const toSink$ = transformElementTo$(source.el, x, y);
-    const fromSink$ = untransformElement$(source.el);
+    const toSink$ = getTransform$(source.el, () => setTranslate(source.el, x, y));
+    const fromSink$ = getTransform$(source.el, () => unsetTranslate(source.el));
     const animation$ = concat(toSink$, fromSink$);
     animation$.subscribe(() => animating$.next(true), null, () => animating$.next(false));
 }
 
-function untransformElement$(el) {
+function getTransform$(el, transform) {
     return new Observable(subscriber => {
-        unsetTranslate(el);
+        transform();
         subscriber.next(el);
-        doneTransforming$(el).subscribe(() => {
+        fromEvent(el, "transitionend")
+        .pipe(filter(event => event.propertyName === "transform"))
+        .subscribe(() => {
             subscriber.next(null);
             subscriber.complete(null);
         });
     });
-}
-
-function transformElementTo$(el, x, y) {
-    return new Observable(subscriber => {
-        setTranslate(el, x, y);
-        subscriber.next(el);
-        doneTransforming$(el).subscribe(() => {
-            subscriber.next(null);
-            subscriber.complete(null);
-        });
-    });
-}
-
-function doneTransforming$(el) {
-    return fromEvent(el, "transitionend").pipe(filter(event => event.propertyName === "transform"));
 }
 
 function draw() {

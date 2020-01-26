@@ -46,6 +46,8 @@ const secondaryMenuEls = Array(3).fill().map((_, i) => {
     return menu;
 });
 
+const secondaryMenuBackEls = secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]);
+
 const selectMenuEls = Array(3).fill().map((_, i) => {
     const menu = selectMenu.cloneNode(true);
     menu.id = `select-menu-hero-${i}`;
@@ -80,6 +82,7 @@ export {
     heroSpriteEls,
     enemySpriteEls,
     secondaryMenuEls,
+    secondaryMenuBackEls,
     selectMenuEls,
     selectedAtbEl,
     atbModeEls,
