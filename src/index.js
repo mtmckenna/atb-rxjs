@@ -124,7 +124,7 @@ const timers$ = state.heroes.map(hero => {
   return clock$.pipe(
     withLatestFrom(wait$),
     // Add 0 to timer if we're waiting...
-    map(([_, wait]) => (wait ? 0 : 0.3)),
+    map(([_, wait]) => (wait ? 0 : 0.2)),
     map(increase => Math.min(hero.wait + increase, 100))
   );
 });

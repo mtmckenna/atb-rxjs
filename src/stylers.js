@@ -30,15 +30,14 @@ function unsetAllCharactersAsSinkable() {
     els.forEach(unsetSinkable);    
 }
 
-// Do I need menus to ne selectable here?
 function highlightHeroes() {
-    const els = [heroNameEls, heroSpriteEls, secondaryMenuEls, selectMenuEls].flat();
+    const els = [heroNameEls, heroSpriteEls].flat();
     els.forEach(setSelectable);
     els.forEach(setSinkable);
 }
 
 function unhighlightHeroes() {
-    const els = [heroNameEls, heroSpriteEls, secondaryMenuEls, selectMenuEls].flat();
+    const els = [heroNameEls, heroSpriteEls].flat();
     els.forEach(unsetSelectable);
     els.forEach(unsetSelected);
     els.forEach(unsetSinkable);
