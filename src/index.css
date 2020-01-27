@@ -261,6 +261,7 @@ body {
     align-items: center;
     flex-direction: column;
     pointer-events: auto;
+    transition: .75s;
 }
 
 .overlay-wrapper {
