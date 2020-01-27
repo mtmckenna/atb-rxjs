@@ -1,5 +1,4 @@
 import state from "./state";
-import { enemySpriteEls, heroSpriteEls } from "./elements";
 
 function isHero(el) {
     return el.classList.contains("hero");
@@ -10,9 +9,9 @@ function isAction(el, type) {
 }
 
 function characterFromElement(el) {
+    const index = el.dataset.id;
     const characters = isHero(el) ? state.heroes : state.enemies;
-    const characterEls = isHero(el) ? heroSpriteEls : enemySpriteEls;
-    return characters[characterEls.indexOf(el)];
+    return characters[index];
 }
 
 function getElementPosition(el) {

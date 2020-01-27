@@ -163,7 +163,7 @@ body {
     background-image: url("../images/skeleton.png");
 }
 
-.hero {
+.hero.sprite {
     transform: scaleX(-1);
 }
 
@@ -202,7 +202,11 @@ body {
 
 .selectable {
     color: #EEEEEE;
-    transition: .75s;
+    /* transition: .75s; */
+    cursor: pointer;
+}
+
+.sinkable {
     cursor: pointer;
 }
 
