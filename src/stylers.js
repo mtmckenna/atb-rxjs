@@ -144,6 +144,7 @@ function unsetShrink(element) {
 function hideSecondaryMenus() {
     secondaryMenuEls.forEach((el) => {
         setHide(el);
+        unsetSelected(el);
     });
 }
 
