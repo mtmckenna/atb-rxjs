@@ -202,7 +202,6 @@ body {
 
 .selectable {
     color: #EEEEEE;
-    /* transition: .75s; */
     cursor: pointer;
 }
 

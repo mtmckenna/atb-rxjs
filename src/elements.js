@@ -1,5 +1,6 @@
-const secondaryMenu = document.getElementById("secondary-menu");
-const selectMenu = document.getElementById("select-menu");
+const secondaryMenu = document.getElementById("hero-menu");
+const magicMenu = document.getElementById("magic-menu");
+const itemMenu = document.getElementById("item-menu");
 
 const waitEls = Array(3).fill().map((_, i) => {
     return document
@@ -46,14 +47,21 @@ const secondaryMenuEls = Array(3).fill().map((_, i) => {
     return menu;
 });
 
-const secondaryMenuBackEls = secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]);
-
-const selectMenuEls = Array(3).fill().map((_, i) => {
-    const menu = selectMenu.cloneNode(true);
-    menu.id = `select-menu-hero-${i}`;
-    selectMenu.parentNode.insertBefore(menu, menu.nextSibling);
+const magicMenuEls = Array(3).fill().map((_, i) => {
+    const menu = magicMenu.cloneNode(true);
+    menu.id = `magic-menu-hero-${i}`;
+    magicMenu.parentNode.insertBefore(menu, menu.nextSibling);
     return menu;
 });
+
+const itemMenuEls = Array(3).fill().map((_, i) => {
+    const menu = magicMenu.cloneNode(true);
+    menu.id = `magic-menu-hero-${i}`;
+    magicMenu.parentNode.insertBefore(menu, menu.nextSibling);
+    return menu;
+});
+
+const secondaryMenuBackEls = secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]);
 
 const unpauseEl = document.getElementById("unpause");
 
@@ -83,7 +91,8 @@ export {
     enemySpriteEls,
     secondaryMenuEls,
     secondaryMenuBackEls,
-    selectMenuEls,
+    magicMenuEls,
+    itemMenuEls,
     selectedAtbEl,
     atbModeEls,
     groundWrapperEl,

@@ -2,7 +2,6 @@ import {
     enemySpriteEls,
     heroNameEls,
     heroSpriteEls,
-    selectMenuEls,
     secondaryMenuEls,
     groundWrapperEl,
     groundEl,
@@ -10,13 +9,69 @@ import {
     backgroundEl
 } from "./elements";
 
-function setTranslate(el, left, top) {
-    el.style.transform = `translate(${left}px, ${top}px)`;
+function setStyle(propName, formattingFunction = v => v) {
+    return function(el) {
+        const args = Array.from(arguments).slice(1, arguments.length);
+        const formatttedValue = formattingFunction(...args);
+        if (el.style[propName] !== formatttedValue) {
+            el.style[propName] = formatttedValue;
+        }
+    }
 }
 
-function unsetTranslate(el) {
-    el.style.transform = null;
+function unsetStyle(propName) {
+    return function(el) {
+        if (!!el.style[propName]) {
+            el.style[propName] = null;
+        }
+    }
 }
+
+function setClass(className) {
+    return function(el) {
+        if (!el.classList.contains(className)) {
+            el.classList.add(className);
+        }
+    }
+}
+
+function unsetClass(className) {
+    return function(el) {
+        if (el.classList.contains(className)) {
+            el.classList.remove(className);
+        }
+    }
+}
+
+const setReady = setClass("ready");
+const unsetReady = unsetClass("ready");
+
+const unsetSinkable = unsetClass("sinkable");
+const setSinkable = setClass("sinkable");
+
+const unsetSelectable = unsetClass("selectable");
+const setSelectable = setClass("selectable");
+
+const unsetHide = unsetClass("hide");
+const setHide = setClass("hide");
+
+const unsetShrink = unsetClass("shrink");
+const setShrink = setClass("shrink");
+
+const setSelected = unsetClass("selected");
+function unsetSelected(element) {
+    element.classList.remove("selected");
+    const children = Array.from(element.getElementsByClassName("selected"));
+    children.forEach((el) => el.classList.remove("selected"));
+}
+
+const setTranslate = setStyle("transform", (left, top) => `translate(${left}px, ${top}px)`);
+const unsetTranslate = unsetStyle("transform");
+const updateWaitWidth = setStyle("width", v => `${v}%`);
+const moveTop = setStyle("top", v => `${v}px`);
+const setHeight = setStyle("height", v => `${v}px`);
+const setBackgroundImage = setStyle("backgroundImage");
+
 
 function setAllCharactersAsSinkable() {
     const els = [heroNameEls, heroSpriteEls, enemySpriteEls].flat();
@@ -73,14 +128,6 @@ function unhighlightEnemies() {
     enemySpriteEls.forEach(unsetSinkable);
 }
 
-function setReady(el) {
-    el.classList.add("ready");
-}
-
-function unsetReady(el) {
-    el.classList.remove("ready");
-}
-
 function setHeroReady(heroIndex) {
     const heroName = heroNameEls[heroIndex];
     const heroSprite = heroSpriteEls[heroIndex];
@@ -99,48 +146,6 @@ function unsetHeroReady(heroIndex) {
     });
 }
 
-function unsetSinkable(element) {
-    element.classList.remove("sinkable");
-}
-
-function setSinkable(element) {
-    element.classList.add("sinkable");
-}
-
-function setSelected(element) {
-    element.classList.add("selected");
-}
-
-function unsetSelected(element) {
-    element.classList.remove("selected");
-    const children = Array.from(element.getElementsByClassName("selected"));
-    children.forEach((el) => el.classList.remove("selected"));
-}
-
-function setSelectable(element) {
-    element.classList.add("selectable");
-}
-
-function unsetSelectable(element) {
-    element.classList.remove("selectable");
-}
-
-function setHide(element) {
-    element.classList.add("hide");    
-}
-
-function unsetHide(element) {
-    element.classList.remove("hide");    
-}
-
-function setShrink(element) {
-    element.classList.add("shrink");    
-}
-
-function unsetShrink(element) {
-    element.classList.remove("shrink");    
-}
-
 function hideSecondaryMenus() {
     secondaryMenuEls.forEach((el) => {
         setHide(el);
@@ -152,18 +157,6 @@ function showSecondaryMenu(heroIndex) {
     hideSecondaryMenus();
     const el = secondaryMenuEls[heroIndex];
     unsetHide(el);
-}
-
-function moveTop(el, amount) {
-    el.style.top = `${amount}px`;
-}
-
-function setHeight(el, height) {
-    el.style.height = `${height}px`;
-}
-
-function setBackgroundImage(el, img) {
-    el.style.backgroundImage = img;
 }
 
 function resize() {
@@ -181,11 +174,6 @@ function deg2rad(degrees) {
     return degrees * Math.PI / 180;
 }
 
-function updateWaitWidth(el, percentage) {
-    if (parseInt(el.style.width) !== percentage) {
-        el.style.width = `${percentage}%`;
-    }
-}
 
 function updateIfDifferent(element, value) {
     if (element.textContent !== value) {
