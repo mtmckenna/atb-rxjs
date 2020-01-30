@@ -1,4 +1,4 @@
-const secondaryMenu = document.getElementById("hero-menu");
+const heroMenu = document.getElementById("hero-menu");
 const magicMenu = document.getElementById("magic-menu");
 const itemMenu = document.getElementById("item-menu");
 
@@ -40,10 +40,10 @@ const enemySpriteEls = Array(3).fill().map((_, i) => {
     .getElementsByClassName("sprite")[0];
 });
 
-const secondaryMenuEls = Array(3).fill().map((_, i) => {
-    const menu = secondaryMenu.cloneNode(true);
-    menu.id = `secondary-menu-hero-${i}`;
-    secondaryMenu.parentNode.insertBefore(menu, menu.nextSibling);
+const heroMenuEls = Array(3).fill().map((_, i) => {
+    const menu = heroMenu.cloneNode(true);
+    menu.id = `hero-menu-${i}`;
+    heroMenu.parentNode.insertBefore(menu, menu.nextSibling);
     return menu;
 });
 
@@ -55,13 +55,17 @@ const magicMenuEls = Array(3).fill().map((_, i) => {
 });
 
 const itemMenuEls = Array(3).fill().map((_, i) => {
-    const menu = magicMenu.cloneNode(true);
-    menu.id = `magic-menu-hero-${i}`;
-    magicMenu.parentNode.insertBefore(menu, menu.nextSibling);
+    const menu = itemMenu.cloneNode(true);
+    menu.id = `item-menu-hero-${i}`;
+    itemMenu.parentNode.insertBefore(menu, menu.nextSibling);
     return menu;
 });
 
+const secondaryMenuEls = [magicMenuEls, itemMenuEls].flat();
+
 const secondaryMenuBackEls = secondaryMenuEls.map(el => el.getElementsByClassName("secondary-back")[0]);
+
+const heroMenuBackEls = heroMenuEls.map(el => el.getElementsByClassName("hero-back")[0]);
 
 const unpauseEl = document.getElementById("unpause");
 
@@ -89,6 +93,8 @@ export {
     mpEls,
     heroSpriteEls,
     enemySpriteEls,
+    heroMenuEls,
+    heroMenuBackEls,
     secondaryMenuEls,
     secondaryMenuBackEls,
     magicMenuEls,

@@ -2,6 +2,7 @@ import {
   concat,
   fromEvent,
   interval,
+  merge,
   animationFrameScheduler,
   BehaviorSubject,
   Observable
@@ -18,6 +19,8 @@ import {
   takeUntil,
   withLatestFrom,
   startWith,
+  tap,
+  mapTo
 } from "rxjs/operators";
 
 import {
@@ -26,11 +29,15 @@ import {
   hpEls,
   mpEls,
   heroSpriteEls,
+  heroMenuBackEls,
   secondaryMenuBackEls,
   pauseEl,
   unpauseEl,
   selectedAtbEl,
-  atbModeEls
+  atbModeEls,
+  itemMenuEls,
+  magicMenuEls,
+  secondaryMenuEls
 } from "./elements";
 
 import {
@@ -50,7 +57,9 @@ import {
   updateIfDifferent,
   updateWaitWidth,
   setAllCharactersAsSinkable,
-  unsetAllCharactersAsSinkable
+  unsetAllCharactersAsSinkable,
+  showMagicMenu,
+  hideMagicMenu
 } from "./stylers";
 
 import { characterFromElement, getElementPosition } from "./helpers";
@@ -99,6 +108,26 @@ const clicks$ = fromEvent(document, "click").pipe(
 
 const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
+const menuLinkClicks$ = clicks$.pipe(
+  filter(el => el.classList.contains("menu-link")),
+  pluck("dataset", "menuName"),
+  withLatestFrom(currentHero$)
+);
+
+const characterStillSelected$ = currentHero$.pipe(mapTo(false));
+const secondaryMenuBackClicks$ = fromEvent(secondaryMenuEls).pipe(mapTo(false));
+
+const menuLevels$ = merge(menuLinkClicks$, characterStillSelected$, secondaryMenuBackClicks$);
+
+menuLevels$.subscribe((menu) => {
+    if (menu) {
+        showMagicMenu(state.heroes.indexOf(currentHero$.value));
+    } else {
+        hideMagicMenu();
+    }
+});
+
+const heroMenuBackClicks$ = getClicksForElements$(heroMenuBackEls);
 
 // Any element on which an action (e.g. attack, magic) can happen
 const sinkClicks$ = clicks$.pipe(
@@ -108,7 +137,6 @@ const sinkClicks$ = clicks$.pipe(
 const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
 
-// Current ATB mode
 const atbMode$ = fromEvent(atbModeEls, "click").pipe(
   pluck("target", "dataset", "mode"),
   startWith(state.settings.atbMode)
@@ -149,7 +177,7 @@ state.heroes.forEach((_, i) => {
   const spriteEl = heroSpriteEls[i];
   const hero = state.heroes[i];
   const timer$ = timers$[i];
-  return clicksForElements$([el, spriteEl])
+  return getClicksForElements$([el, spriteEl])
     .pipe(
       withLatestFrom(timer$, action$),
       filter(([_, timer, action]) => timer === 100 && !action)
@@ -159,6 +187,9 @@ state.heroes.forEach((_, i) => {
 
 currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   const index = state.heroes.indexOf(hero);
+  const { magic } = hero;
+  const menu = magicMenuEls[index];
+  menu.textContent = magic;
   highlightHero(index);
   showSecondaryMenu(index);
 });
@@ -168,7 +199,7 @@ currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
   hideSecondaryMenus();
 });
 
-clicksForElements$(secondaryMenuBackEls).subscribe(() => {
+heroMenuBackClicks$.subscribe(() => {
   currentHero$.next(null);
   action$.next(null);
 });
@@ -213,7 +244,7 @@ timers$.forEach((timer$, i) => {
   timer$.pipe(filter(time => time < 100)).subscribe(() => unsetHeroReady(i));
 });
 
-function clicksForElements$(elements) {
+function getClicksForElements$(elements) {
   if (!Array.isArray(elements)) elements = [elements];
   return clicks$.pipe(filter(el => elements.includes(el)));
 }
