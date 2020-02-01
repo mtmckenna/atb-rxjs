@@ -13,7 +13,9 @@ import {
   merge,
   animationFrameScheduler,
   BehaviorSubject,
-  Observable
+  Observable,
+  combineLatest,
+  of
 } from "rxjs";
 
 import {
@@ -80,21 +82,14 @@ import { characterFromElement, getElementPosition } from "./helpers";
 
 import state from "./state";
 
-const currentHero$ = new BehaviorSubject();
-currentHero$.next(null);
-
-const action$ = new BehaviorSubject();
-action$.next(null);
-
-const paused$ = new BehaviorSubject();
-paused$.next(false);
-
-const animatingCount$ = new BehaviorSubject().pipe(
+const currentHero$ = new BehaviorSubject(null);
+const action$ = new BehaviorSubject(null);
+const paused$ = new BehaviorSubject(false);
+const animatingCount$ = new BehaviorSubject(0).pipe(
   scan((acc, val) => acc + val, 0)
 );
 
-animatingCount$.next(0);
-
+const actioning$ = action$.pipe(map(action => !!action));
 const animating$ = animatingCount$.pipe(map(count => count > 0));
 
 // Map of ATB modes to a list of streams that can pause the timer from filling
@@ -102,9 +97,9 @@ const animating$ = animatingCount$.pipe(map(count => count > 0));
 // animating, and Wait stops when either the characters are animating or
 // the player has selected an action (e.g. attack)
 const atbMap = {
-  Active: [],
+  Active: [of(false)],
   Recommended: [animating$],
-  Wait: [animating$, action$]
+  Wait: [animating$, actioning$]
 };
 
 const clock$ = interval(0, animationFrameScheduler).pipe(
@@ -115,6 +110,7 @@ const clock$ = interval(0, animationFrameScheduler).pipe(
   share()
 );
 
+// Don't recognize clicks if we're paused
 const clicks$ = fromEvent(document, "click").pipe(
   withLatestFrom(paused$),
   filter(([_, paused]) => !paused),
@@ -156,19 +152,15 @@ const atbMode$ = fromEvent(atbModeEls, "click").pipe(
   startWith(state.settings.atbMode)
 );
 
-const wait$ = clock$.pipe(
-  withLatestFrom(atbMode$),
-  // Emit true if any of the things in this ATB mode that can cause the timer to pause are truthy
-  map(([_, mode]) => atbMap[mode].some(m => !!m.value))
+const timerClock$ = clock$.pipe(
+  withLatestFrom(atbMode$, (_, mode) => mode),
+  switchMap(mode => combineLatest(atbMap[mode])),
+  filter(thingsToWaitOn => !thingsToWaitOn.some(m => m)),
+  share()
 );
 
 const timers$ = state.heroes.map(hero => {
-  return clock$.pipe(
-    withLatestFrom(wait$),
-    // Add 0 to timer if we're waiting...
-    map(([_, wait]) => (wait ? 0 : 0.2)),
-    map(increase => Math.min(hero.wait + increase, 100))
-  );
+  return timerClock$.pipe(map(() => Math.min(hero.wait + 0.1, 100)));
 });
 
 resize$.subscribe(resize);
@@ -315,8 +307,8 @@ function magic(source, sink) {
 
   const toSink$ = getTransform$(ball, () => setTranslate(ball, x, y));
   const animation$ = concat(toSink$);
-  animating$.next(1);
-  animation$.subscribe(null, null, () => animating$.next(-1));
+  animatingCount$.next(1);
+  animation$.subscribe(null, null, () => animatingCount$.next(-1));
 }
 
 function attack(source, sink) {
@@ -332,8 +324,8 @@ function attack(source, sink) {
   const toSink$ = getTransform$(source.el, () => setTranslate(source.el, x, y));
   const fromSink$ = getTransform$(source.el, () => unsetTranslate(source.el));
   const animation$ = concat(toSink$, fromSink$);
-  animating$.next(1);
-  animation$.subscribe(null, null, () => animating$.next(-1));
+  animatingCount$.next(1);
+  animation$.subscribe(null, null, () => animatingCount$.next(-1));
 }
 
 function getTransform$(el, transform) {
