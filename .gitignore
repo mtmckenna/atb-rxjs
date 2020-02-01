@@ -3,6 +3,7 @@
 /node_modules
 /dist
 /.cache
+.parcel-cache
 
 # misc
 .DS_Store

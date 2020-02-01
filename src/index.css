@@ -1,279 +1,305 @@
 * {
-    box-sizing: border-box;
-    padding: 0;
-    margin: 0;
-    border: 0;
-    font-family: "Arial Black", Gadget, sans-serif;
-    cursor: default;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  font-family: "Arial Black", Gadget, sans-serif;
+  cursor: default;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    background-color: rgb(153, 178, 224);
-    color: #EEEEEE;
-    overflow: hidden;
+  background-color: rgb(153, 178, 224);
+  color: #eeeeee;
+  overflow: hidden;
 }
 
 .container {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .top {
-    position: fixed;
-    display: flex;
-    align-items: flex-end;
-    height: 70%;
-    left: 0;
-    right: 0;
+  position: fixed;
+  display: flex;
+  align-items: flex-end;
+  height: 70%;
+  left: 0;
+  right: 0;
 }
 
 .bottom {
-    position: fixed;
-    top: 70%;
-    left: 0;
-    right: 2px;
-    bottom: 2px;
+  position: fixed;
+  top: 70%;
+  left: 0;
+  right: 2px;
+  bottom: 2px;
 }
 
 .box {
-    position: absolute;
-    display: grid;
-    height: 100%;
-    border-radius: 5px;
-    border: 2px solid #EEEEEE;
-    background: rgb(54,135,207);
-    background: radial-gradient(circle at left top, rgba(54,135,207,1) 0%, rgba(17,17,23,1) 100%);
-    box-shadow: inset 0 0 10px #000000;
-    margin: 1px;
-    padding: 10px;
-    text-shadow: 1px 1px 0 black; 
+  position: absolute;
+  display: grid;
+  height: 100%;
+  border-radius: 5px;
+  border: 2px solid #eeeeee;
+  background: rgb(54, 135, 207);
+  background: radial-gradient(
+    circle at left top,
+    rgba(54, 135, 207, 1) 0%,
+    rgba(17, 17, 23, 1) 100%
+  );
+  box-shadow: inset 0 0 10px #000000;
+  margin: 1px;
+  padding: 10px;
+  text-shadow: 1px 1px 0 black;
 }
 
 .left {
-    width: 25%;
-    color: rgb(179, 179, 179);
+  width: 25%;
+  color: rgb(179, 179, 179);
 }
 
 .right {
-    width: 75%;
+  width: 75%;
 }
 
 .row {
-    display: grid;
-    align-items: center;
-    flex-grow: 1;
-    font-size: 20px;
-    white-space: nowrap;
+  display: grid;
+  align-items: center;
+  flex-grow: 1;
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+.back-row-wrapper {
+  flex-grow: 0;
 }
 
 .header {
-    font-size: 16px;
-    color: rgb(179, 179, 179);
+  font-size: 16px;
+  color: rgb(179, 179, 179);
 }
 
 .right .row {
-    grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr;
 }
 
 .right.box {
-    left: 25%;
-    transition: .75s;
+  left: 25%;
+  transition: 0.75s;
 }
 
 .selected {
-    animation: flash 1.25s linear infinite;
+  animation: flash 1.25s linear infinite;
 }
 
 @keyframes flash {
-    50% { opacity: .2; }
+  50% {
+    opacity: 0.2;
+  }
 }
 
 .hide {
-    left: -100% !important;
+  left: -100% !important;
 }
 
 .shrink {
-    transform: scale(0) !important;
+  transform: scale(0) !important;
 }
 
 .progress-bar {
-    background-color: gray;
-    height: 25%;
+  background-color: gray;
+  height: 25%;
 }
 
 .progress-bar-filling {
-    width: 0%;
-    height: 100%;
-    background-color: seagreen;
+  width: 0%;
+  height: 100%;
+  background-color: seagreen;
 }
 
 .sprite {
-    width: 15vh;
-    height: 15vh;
-    background-size: contain;
-    background-repeat: no-repeat;
-    display: flex;
-    filter: drop-shadow(0 0 0 #fff);
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    border-radius: 5px;
-    position: absolute;
-    transition: 1s;
-    image-rendering: pixelated;
-    z-index: 2;
+  width: 15vh;
+  height: 15vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  display: flex;
+  filter: drop-shadow(0 0 0 #fff);
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border-radius: 5px;
+  position: absolute;
+  transition: 1s;
+  image-rendering: pixelated;
+  z-index: 2;
 }
 
 .sprite-selected {
-    animation: flash 1.25s linear infinite;
+  animation: flash 1.25s linear infinite;
 }
 
 .sprite-wrapper {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    width: 100%;
-    flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  flex: 1;
 }
 
 .sprite-firefox {
-    background-image: url("../images/firefox.png");
+  background-image: url("../images/firefox.png");
 }
 
 .sprite-warrior {
-    background-image: url("../images/warrior.png");
+  background-image: url("../images/warrior.png");
 }
 
 .sprite-wizard {
-    background-image: url("../images/wizard.png");
+  background-image: url("../images/wizard.png");
 }
 
 .sprite-deathknight {
-    background-image: url("../images/deathknight.png");
+  background-image: url("../images/deathknight.png");
 }
 
 .sprite-goblin {
-    background-image: url("../images/goblin.png");
+  background-image: url("../images/goblin.png");
 }
 
 .sprite-skeleton {
-    background-image: url("../images/skeleton.png");
+  background-image: url("../images/skeleton.png");
 }
 
 .hero.sprite {
-    transform: scaleX(-1);
+  transform: scaleX(-1);
+}
+
+.hero-menu {
+  width: 50%;
+  grid-auto-rows: min-content auto;
 }
 
 .enemy {
-    border: 2px solid transparent;
-    color: rgb(179, 179, 179);
+  border: 2px solid transparent;
+  color: rgb(179, 179, 179);
 }
 
 .enemies {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex: 1;
-    padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  padding-left: 10px;
 }
 
 .heroes {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    flex: 1;
-    padding-right: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  padding-right: 5px;
 }
 
 .heroes > .sprite-wrapper {
-    align-items: flex-end;
+  align-items: flex-end;
+}
+
+.hero-back {
+  text-align: center;
 }
 
 .secondary-back {
-    text-align: center;
+  text-align: center;
 }
 
 .secondary-menu {
-    width: 50%;
+  width: 50%;
+  grid-auto-rows: min-content;
 }
 
 .selectable {
-    color: #EEEEEE;
-    cursor: pointer;
+  color: #eeeeee;
+  cursor: pointer;
 }
 
 .sinkable {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .unselectable {
-    color: rgb(179, 179, 179);
+  color: rgb(179, 179, 179);
 }
 
 .selectable:hover {
-    cursor: pointer;
+  cursor: pointer;
 }
 
 .sprite.ready {
-    filter: drop-shadow(0 0 10px #fff);
+  filter: drop-shadow(0 0 10px #fff);
 }
 
 .ground-wrapper {
-    position: absolute;
-    height: 100%;
-    width: 100%;
-    /* Line below works around the issue where Safari cuts off characters bc of the 3d ground */
-    overflow: hidden; 
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  /* Line below works around the issue where Safari cuts off characters bc of the 3d ground */
+  overflow: hidden;
 }
 
 .ground {
-    position: absolute;
-    height: 100%;
-    width: 100%;
-    transform: rotate3d(1, 0, 0, 45deg);
-    background: linear-gradient(
-        rgba(84, 130, 93, 1.0), 
-        rgba(0, 0, 0, 0.0)
-      ),
-      url("../images/grass.png");
-    z-index: 0;
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  transform: rotate3d(1, 0, 0, 45deg);
+  background: linear-gradient(rgba(84, 130, 93, 1), rgba(0, 0, 0, 0)),
+    url("../images/grass.png");
+  z-index: 0;
 }
 
 .background {
-    position: absolute;
-    background-size: auto 100%;
-    background-image: url("../images/houses.png");
-    width: 100%;
-    top: 3%;
-    z-index: 1;
+  position: absolute;
+  background-size: auto 100%;
+  background-image: url("../images/houses.png");
+  width: 100%;
+  top: 3%;
+  z-index: 1;
 }
 
 .overlay {
-    height: initial;
-    z-index: 2;
-    margin-top: 25px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    pointer-events: auto;
-    transition: .75s;
+  height: initial;
+  z-index: 2;
+  margin-top: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  pointer-events: auto;
+  transition: 0.75s;
 }
 
 .overlay-wrapper {
-    position: fixed;
-    height: 100vh;
-    width: 100vw;
-    display: flex;
-    justify-content: center;
-    flex-direction: row;
-    z-index: 2;
-    pointer-events: none
+  position: fixed;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  flex-direction: row;
+  z-index: 2;
+  pointer-events: none;
 }
 
 #selected-atb {
-    cursor: pointer;
+  cursor: pointer;
+}
+
+.magic-ball {
+  width: 15vh;
+  height: 15vh;
+  background: radial-gradient(red 0%, rgba(0, 0, 0, 0) 50%);
+  position: absolute;
+  transition: 1s;
+  z-index: 3;
 }

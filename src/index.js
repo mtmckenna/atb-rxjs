@@ -1,3 +1,11 @@
+// Finish magic ball animation
+// Add items
+// HP lowers on attack
+// MP lowers on magic
+// HP/MP text animates
+// Enemies attack
+// Can win
+
 import {
   concat,
   fromEvent,
@@ -28,6 +36,7 @@ import {
   heroNameEls,
   hpEls,
   mpEls,
+  heroMenuEls,
   heroSpriteEls,
   heroMenuBackEls,
   secondaryMenuBackEls,
@@ -59,7 +68,12 @@ import {
   setAllCharactersAsSinkable,
   unsetAllCharactersAsSinkable,
   showMagicMenu,
-  hideMagicMenu
+  hideMagicMenu,
+  fillMagicMenu,
+  unsetSelected,
+  generateMagicBall,
+  moveTop,
+  moveLeft
 } from "./stylers";
 
 import { characterFromElement, getElementPosition } from "./helpers";
@@ -78,6 +92,7 @@ paused$.next(false);
 const animatingCount$ = new BehaviorSubject().pipe(
   scan((acc, val) => acc + val, 0)
 );
+
 animatingCount$.next(0);
 
 const animating$ = animatingCount$.pipe(map(count => count > 0));
@@ -115,17 +130,16 @@ const menuLinkClicks$ = clicks$.pipe(
 );
 
 const characterStillSelected$ = currentHero$.pipe(mapTo(false));
-const secondaryMenuBackClicks$ = fromEvent(secondaryMenuEls).pipe(mapTo(false));
 
-const menuLevels$ = merge(menuLinkClicks$, characterStillSelected$, secondaryMenuBackClicks$);
+const secondaryMenuBackClicks$ = fromEvent(secondaryMenuBackEls, "click").pipe(
+  mapTo(false)
+);
 
-menuLevels$.subscribe((menu) => {
-    if (menu) {
-        showMagicMenu(state.heroes.indexOf(currentHero$.value));
-    } else {
-        hideMagicMenu();
-    }
-});
+const menuLevels$ = merge(
+  menuLinkClicks$,
+  characterStillSelected$,
+  secondaryMenuBackClicks$
+);
 
 const heroMenuBackClicks$ = getClicksForElements$(heroMenuBackEls);
 
@@ -159,6 +173,16 @@ const timers$ = state.heroes.map(hero => {
 
 resize$.subscribe(resize);
 
+menuLevels$.subscribe(menu => {
+  action$.next(null);
+
+  if (menu) {
+    showMagicMenu(state.heroes.indexOf(currentHero$.value));
+  } else {
+    hideMagicMenu();
+  }
+});
+
 pauseClick$.subscribe(() => {
   paused$.next(true);
   setShrink(pauseEl);
@@ -189,7 +213,7 @@ currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   const index = state.heroes.indexOf(hero);
   const { magic } = hero;
   const menu = magicMenuEls[index];
-  menu.textContent = magic;
+  fillMagicMenu(menu, magic);
   highlightHero(index);
   showSecondaryMenu(index);
 });
@@ -209,33 +233,61 @@ clicks$
     filter(el => el.classList.contains("action")),
     withLatestFrom(currentHero$)
   )
-  .subscribe(([el, hero]) =>
-    action$.next({ source: hero, action: "attack", el })
-  );
+  .subscribe(([el, hero]) => {
+    const action = el.dataset.action;
+    return action$.next({ source: hero, action, el });
+  });
 
 action$.pipe(filter(action => !!action)).subscribe(({ el }) => {
   setAllCharactersAsSinkable();
   setSelected(el);
 });
 
-actionUnselected$.subscribe(unsetAllCharactersAsSinkable);
+actionUnselected$.subscribe(() => {
+  heroMenuEls.forEach(unsetSelected);
+  unsetAllCharactersAsSinkable();
+});
+
+const waitForSinkClick = input$ =>
+  input$.pipe(
+    switchMap(({ source }) =>
+      sinkClicks$.pipe(
+        takeUntil(actionUnselected$),
+        take(1),
+        map(el => ({ source, sink: characterFromElement(el) }))
+      )
+    )
+  );
 
 const attack$ = actionSelected$.pipe(
-  switchMap(({ source }) =>
-    sinkClicks$.pipe(
-      takeUntil(actionUnselected$),
-      take(1),
-      map(el => ({ source, el }))
-    )
-  ),
-  map(({ source, el }) => ({ source, sink: characterFromElement(el) }))
+  filter(({ action }) => action === "attack"),
+  waitForSinkClick
+);
+
+const magic$ = actionSelected$.pipe(
+  filter(({ action }) => action === "magic"),
+  waitForSinkClick
+);
+
+const item$ = actionSelected$.pipe(
+  filter(({ action }) => action === "item"),
+  waitForSinkClick
 );
 
 attack$.subscribe(({ source, sink }) => {
   attack(source, sink);
+  completeAction();
+});
+
+magic$.subscribe(({ source, sink }) => {
+  magic(source, sink);
+  completeAction();
+});
+
+function completeAction() {
   action$.next(null);
   currentHero$.next(null);
-});
+}
 
 timers$.forEach((timer$, i) => {
   const hero = state.heroes[i];
@@ -247,6 +299,24 @@ timers$.forEach((timer$, i) => {
 function getClicksForElements$(elements) {
   if (!Array.isArray(elements)) elements = [elements];
   return clicks$.pipe(filter(el => elements.includes(el)));
+}
+
+function magic(source, sink) {
+  console.log(`${source.name} magics ${sink.name}...`);
+  unhighlightEnemies();
+  hideSecondaryMenus();
+  const ball = generateMagicBall("blue");
+  const sourcePos = getElementPosition(source.el);
+  const sinkPos = getElementPosition(sink.el);
+  moveTop(ball, sourcePos.top);
+  moveLeft(ball, sourcePos.left);
+  const x = sinkPos.left - sourcePos.left;
+  const y = sinkPos.top - sourcePos.top;
+
+  const toSink$ = getTransform$(ball, () => setTranslate(ball, x, y));
+  const animation$ = concat(toSink$);
+  animating$.next(1);
+  animation$.subscribe(null, null, () => animating$.next(-1));
 }
 
 function attack(source, sink) {

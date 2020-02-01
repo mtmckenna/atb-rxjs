@@ -1,4 +1,5 @@
 import {
+  battleEl,
   enemySpriteEls,
   heroNameEls,
   heroSpriteEls,
@@ -8,7 +9,8 @@ import {
   groundWrapperEl,
   groundEl,
   spriteWrapperEls,
-  backgroundEl
+  backgroundEl,
+  secondaryMenuEls
 } from "./elements";
 
 function setStyle(propName, formattingFunction = v => v) {
@@ -68,6 +70,11 @@ function unsetSelected(element) {
   children.forEach(el => el.classList.remove("selected"));
 }
 
+const setMagicBallBackground = setStyle(
+  "background",
+  v => `background: radial-gradient(${v} 0%, rgba(0, 0, 0, 0) 50%);`
+);
+
 const setTranslate = setStyle(
   "transform",
   (left, top) => `translate(${left}px, ${top}px)`
@@ -75,6 +82,7 @@ const setTranslate = setStyle(
 const unsetTranslate = unsetStyle("transform");
 const updateWaitWidth = setStyle("width", v => `${v}%`);
 const moveTop = setStyle("top", v => `${v}px`);
+const moveLeft = setStyle("left", v => `${v}px`);
 const setHeight = setStyle("height", v => `${v}px`);
 const setBackgroundImage = setStyle("backgroundImage");
 
@@ -206,26 +214,47 @@ function createRow(text, classes, data = {}) {
     row.dataset[key] = data[key];
   });
 
+  row.textContent = text;
+
   return row;
 }
 
 function createActionRow(text, action, index) {
-  const classes = ["row", "selectable", "action"];
+  const classes = ["row", "selectable", "action", "clearable"];
   const data = { action, id: parseInt(index) };
   return createRow(text, classes, data);
 }
 
-function createMagicRow(text, index) {
-  return createActionRow("Ice", "magic", index);
+function fillMenuFunction(type) {
+  return function(element, things) {
+    clearRows(element);
+    things.forEach((thing, index) => {
+      element.appendChild(createActionRow(thing.name, type, index));
+    });
+  };
 }
 
-function createItemRow(text, index) {
-  return createActionRow("Ice", "item", index);
+const fillMagicMenu = fillMenuFunction("magic");
+const fillItemMenu = fillMenuFunction("item");
+
+function clearRows(element) {
+  const clearables = element.getElementsByClassName("clearable");
+  Array.from(clearables).forEach(el => el.remove());
+}
+
+function generateMagicBall(color) {
+  const ball = document.createElement("div");
+  ball.classList.add("magic-ball");
+  battleEl.appendChild(ball);
+
+  return ball;
 }
 
 export {
-  createItemRow,
-  createMagicRow,
+  generateMagicBall,
+  fillMagicMenu,
+  fillItemMenu,
+  clearRows,
   setTranslate,
   unsetTranslate,
   highlightHeroes,
@@ -252,11 +281,13 @@ export {
   hideSecondaryMenus,
   showSecondaryMenu,
   moveTop,
+  moveLeft,
   setHeight,
   setBackgroundImage,
   resize,
   updateIfDifferent,
   updateWaitWidth,
   showMagicMenu,
-  hideMagicMenu
+  hideMagicMenu,
+  setMagicBallBackground
 };
