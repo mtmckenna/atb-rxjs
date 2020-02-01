@@ -319,7 +319,10 @@ function magic(source, sink) {
   const fadeOut$ = getTransitionEnd$(ball, "opacity", () => unsetOpacity(ball));
   const animation$ = concat(fadeIn$, toSink$, fadeOut$);
   animatingCount$.next(1);
-  animation$.subscribe(null, null, () => animatingCount$.next(-1));
+  animation$.subscribe(null, null, () => {
+    ball.remove();
+    animatingCount$.next(-1);
+  });
 }
 
 function attack(source, sink) {
