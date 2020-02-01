@@ -1,4 +1,3 @@
-// Finish magic ball animation
 // Add items
 // HP lowers on attack
 // MP lowers on magic
@@ -75,7 +74,9 @@ import {
   unsetSelected,
   generateMagicBall,
   moveTop,
-  moveLeft
+  moveLeft,
+  setOpacity,
+  unsetOpacity
 } from "./stylers";
 
 import { characterFromElement, getElementPosition } from "./helpers";
@@ -155,12 +156,15 @@ const atbMode$ = fromEvent(atbModeEls, "click").pipe(
 const timerClock$ = clock$.pipe(
   withLatestFrom(atbMode$, (_, mode) => mode),
   switchMap(mode => combineLatest(atbMap[mode])),
-  filter(thingsToWaitOn => !thingsToWaitOn.some(m => m)),
+  map(thingsToWaitOn => !thingsToWaitOn.some(m => m)),
   share()
 );
 
 const timers$ = state.heroes.map(hero => {
-  return timerClock$.pipe(map(() => Math.min(hero.wait + 0.1, 100)));
+  return timerClock$.pipe(
+    map(ticking => (ticking ? 0.1 : 0)),
+    map(increase => Math.min(hero.wait + increase, 100))
+  );
 });
 
 resize$.subscribe(resize);
@@ -295,6 +299,7 @@ function getClicksForElements$(elements) {
 
 function magic(source, sink) {
   console.log(`${source.name} magics ${sink.name}...`);
+  source.wait = 0;
   unhighlightEnemies();
   hideSecondaryMenus();
   const ball = generateMagicBall("blue");
@@ -305,8 +310,14 @@ function magic(source, sink) {
   const x = sinkPos.left - sourcePos.left;
   const y = sinkPos.top - sourcePos.top;
 
-  const toSink$ = getTransform$(ball, () => setTranslate(ball, x, y));
-  const animation$ = concat(toSink$);
+  const fadeIn$ = getTransitionEnd$(ball, "opacity", () =>
+    setOpacity(ball, 1.0)
+  );
+  const toSink$ = getTransitionEnd$(ball, "transform", () =>
+    setTranslate(ball, x, y)
+  );
+  const fadeOut$ = getTransitionEnd$(ball, "opacity", () => unsetOpacity(ball));
+  const animation$ = concat(fadeIn$, toSink$, fadeOut$);
   animatingCount$.next(1);
   animation$.subscribe(null, null, () => animatingCount$.next(-1));
 }
@@ -321,18 +332,22 @@ function attack(source, sink) {
   const x = sinkPos.left - sourcePos.left;
   const y = sinkPos.top - sourcePos.top;
 
-  const toSink$ = getTransform$(source.el, () => setTranslate(source.el, x, y));
-  const fromSink$ = getTransform$(source.el, () => unsetTranslate(source.el));
+  const toSink$ = getTransitionEnd$(source.el, "transform", () =>
+    setTranslate(source.el, x, y)
+  );
+  const fromSink$ = getTransitionEnd$(source.el, "transform", () =>
+    unsetTranslate(source.el)
+  );
   const animation$ = concat(toSink$, fromSink$);
   animatingCount$.next(1);
   animation$.subscribe(null, null, () => animatingCount$.next(-1));
 }
 
-function getTransform$(el, transform) {
+function getTransitionEnd$(el, property, transform) {
   return new Observable(subscriber => {
     transform();
     fromEvent(el, "transitionend")
-      .pipe(filter(event => event.propertyName === "transform"))
+      .pipe(filter(event => event.propertyName === property))
       .subscribe(() => subscriber.complete(null));
   });
 }

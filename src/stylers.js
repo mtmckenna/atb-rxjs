@@ -72,7 +72,7 @@ function unsetSelected(element) {
 
 const setMagicBallBackground = setStyle(
   "background",
-  v => `background: radial-gradient(${v} 0%, rgba(0, 0, 0, 0) 50%);`
+  v => `radial-gradient(${v} 0%, rgba(0, 0, 0, 0) 50%)`
 );
 
 const setTranslate = setStyle(
@@ -85,6 +85,8 @@ const moveTop = setStyle("top", v => `${v}px`);
 const moveLeft = setStyle("left", v => `${v}px`);
 const setHeight = setStyle("height", v => `${v}px`);
 const setBackgroundImage = setStyle("backgroundImage");
+const setOpacity = setStyle("opacity");
+const unsetOpacity = unsetStyle("opacity");
 
 function setAllCharactersAsSinkable() {
   const els = [heroNameEls, heroSpriteEls, enemySpriteEls].flat();
@@ -245,6 +247,7 @@ function clearRows(element) {
 function generateMagicBall(color) {
   const ball = document.createElement("div");
   ball.classList.add("magic-ball");
+  setMagicBallBackground(ball, color);
   battleEl.appendChild(ball);
 
   return ball;
@@ -278,6 +281,8 @@ export {
   unsetHide,
   setShrink,
   unsetShrink,
+  setOpacity,
+  unsetOpacity,
   hideSecondaryMenus,
   showSecondaryMenu,
   moveTop,

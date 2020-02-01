@@ -14,7 +14,7 @@ const hero1 = {
   maxHp: 1500,
   hp: 1250,
   mp: 75,
-  wait: 10,
+  wait: 0,
   magic: magic1,
   items: ["Potion"]
 };
@@ -36,7 +36,7 @@ const hero3 = {
   maxHp: 250,
   hp: 750,
   mp: 120,
-  wait: 0,
+  wait: 50,
   magic: magic3,
   items: ["Potion", "Potion"]
 };
