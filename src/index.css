@@ -11,8 +11,11 @@
 
 body {
   background-color: rgb(153, 178, 224);
+  height: 100vh;
   color: #eeeeee;
   overflow: hidden;
+  opacity: 0;
+  transition: 1s;
 }
 
 .container {

@@ -10,7 +10,8 @@ import {
   groundEl,
   spriteWrapperEls,
   backgroundEl,
-  secondaryMenuEls
+  secondaryMenuEls,
+  getAvailableActions
 } from "./elements";
 
 function setStyle(propName, formattingFunction = v => v) {
@@ -223,7 +224,7 @@ function createRow(text, classes, data = {}) {
 
 function createActionRow(text, action, index) {
   const classes = ["row", "selectable", "action", "clearable"];
-  const data = { action, id: parseInt(index) };
+  const data = { action, index: parseInt(index) };
   return createRow(text, classes, data);
 }
 
@@ -251,6 +252,12 @@ function generateMagicBall(color) {
   battleEl.appendChild(ball);
 
   return ball;
+}
+
+function selectAction(el) {
+  const actionEls = getAvailableActions();
+  actionEls.forEach(unsetSelected);
+  setSelected(el);
 }
 
 export {
@@ -294,5 +301,6 @@ export {
   updateWaitWidth,
   showMagicMenu,
   hideMagicMenu,
-  setMagicBallBackground
+  setMagicBallBackground,
+  selectAction
 };

@@ -1,11 +1,13 @@
 import { heroNameEls, heroSpriteEls, enemySpriteEls } from "./elements";
 
 const magic1 = [
-  { name: "Ice", damage: 10, mpDrain: 20 },
-  { name: "Bolt", damage: 15, mpDrain: 30 }
+  { name: "Ice", damage: 10, mpDrain: 20, color: "blue" },
+  { name: "Bolt", damage: 15, mpDrain: 30, color: "white" }
 ];
-const magic2 = [{ name: "Fire", damage: 40, mpDrain: 35 }];
-const magic3 = [{ name: "Restore", damage: -20, mpDrain: 20 }];
+
+const magic2 = [{ name: "Fire", damage: 40, mpDrain: 35, color: "red" }];
+
+const magic3 = [{ name: "Restore", damage: -20, mpDrain: 20, color: "green" }];
 
 const hero1 = {
   name: "Wizard",
@@ -14,7 +16,7 @@ const hero1 = {
   maxHp: 1500,
   hp: 1250,
   mp: 75,
-  wait: 0,
+  wait: 100,
   magic: magic1,
   items: ["Potion"]
 };

@@ -76,7 +76,8 @@ import {
   moveTop,
   moveLeft,
   setOpacity,
-  unsetOpacity
+  unsetOpacity,
+  selectAction
 } from "./stylers";
 
 import { characterFromElement, getElementPosition } from "./helpers";
@@ -236,7 +237,7 @@ clicks$
 
 action$.pipe(filter(action => !!action)).subscribe(({ el }) => {
   setAllCharactersAsSinkable();
-  setSelected(el);
+  selectAction(el);
 });
 
 actionUnselected$.subscribe(() => {
@@ -246,11 +247,11 @@ actionUnselected$.subscribe(() => {
 
 const waitForSinkClick = input$ =>
   input$.pipe(
-    switchMap(({ source }) =>
+    switchMap(({ source, el }) =>
       sinkClicks$.pipe(
         takeUntil(actionUnselected$),
         take(1),
-        map(el => ({ source, sink: characterFromElement(el) }))
+        map(sinkEl => ({ source, sink: characterFromElement(sinkEl), el }))
       )
     )
   );
@@ -275,8 +276,9 @@ attack$.subscribe(({ source, sink }) => {
   completeAction();
 });
 
-magic$.subscribe(({ source, sink }) => {
-  magic(source, sink);
+magic$.subscribe(({ source, sink, el }) => {
+  const magicData = source.magic[el.dataset.index];
+  magic(source, sink, magicData);
   completeAction();
 });
 
@@ -297,12 +299,12 @@ function getClicksForElements$(elements) {
   return clicks$.pipe(filter(el => elements.includes(el)));
 }
 
-function magic(source, sink) {
+function magic(source, sink, data) {
   console.log(`${source.name} magics ${sink.name}...`);
   source.wait = 0;
   unhighlightEnemies();
   hideSecondaryMenus();
-  const ball = generateMagicBall("blue");
+  const ball = generateMagicBall(data.color);
   const sourcePos = getElementPosition(source.el);
   const sinkPos = getElementPosition(sink.el);
   moveTop(ball, sourcePos.top);
@@ -367,6 +369,8 @@ function draw() {
   );
   updateIfDifferent(selectedAtbEl, state.settings.atbMode);
 }
+
+setOpacity(document.body, 1.0);
 
 requestAnimationFrame(draw);
 resize();

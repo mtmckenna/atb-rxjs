@@ -109,6 +109,10 @@ const backgroundEl = document.getElementsByClassName("background")[0];
 
 const battleEl = document.getElementsByClassName("top")[0];
 
+function getAvailableActions() {
+  return Array.from(document.getElementsByClassName("action"));
+}
+
 export {
   battleEl,
   pauseEl,
@@ -131,5 +135,6 @@ export {
   groundWrapperEl,
   groundEl,
   spriteWrapperEls,
-  backgroundEl
+  backgroundEl,
+  getAvailableActions
 };
