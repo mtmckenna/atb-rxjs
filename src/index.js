@@ -2,7 +2,6 @@
 // HP lowers on attack
 // Enemies attack
 // Can win
-// Create separate streams for menuLevels
 
 import {
   concat,
@@ -46,7 +45,8 @@ import {
   atbModeEls,
   itemMenuEls,
   magicMenuEls,
-  getAvailableActions
+  getAvailableActions,
+  enemySpriteEls
 } from "./elements";
 
 import {
@@ -77,10 +77,12 @@ import {
   setOpacity,
   unsetOpacity,
   selectAction,
-  unsetSelectable
+  unsetSelectable,
+  setDead,
+  unsetDead
 } from "./stylers";
 
-import { characterFromElement, getElementPosition } from "./helpers";
+import { characterFromElement, getElementPosition, isHero } from "./helpers";
 
 import state from "./state";
 
@@ -123,8 +125,8 @@ const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
 const menuLinkClicks$ = clicks$.pipe(
   filter(el => el.classList.contains("menu-link")),
-  pluck("dataset", "menuName"),
-  withLatestFrom(currentHero$)
+  pluck("dataset", "menuName")
+  // withLatestFrom(currentHero$)
 );
 
 const characterStillSelected$ = currentHero$.pipe(mapTo(false));
@@ -138,6 +140,10 @@ const menuLevels$ = merge(
   characterStillSelected$,
   secondaryMenuBackClicks$
 );
+
+const magicMenu$ = menuLevels$.pipe(filter(menu => menu === "magic"));
+const itemMenu$ = menuLevels$.pipe(filter(menu => menu === "item"));
+const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
 
 const heroMenuBackClicks$ = getClicksForElements$(heroMenuBackEls);
 
@@ -170,14 +176,13 @@ const timers$ = state.heroes.map(hero => {
 
 resize$.subscribe(resize);
 
-menuLevels$.subscribe(menu => {
-  action$.next(null);
+noMenu$.subscribe(() => {
+  hideMagicMenu();
+});
 
-  if (menu) {
-    showMagicMenu(state.heroes.indexOf(currentHero$.value));
-  } else {
-    hideMagicMenu();
-  }
+magicMenu$.subscribe(() => {
+  const hero = currentHero$.value;
+  showMagicMenu(state.heroes.indexOf(hero));
 });
 
 pauseClick$.subscribe(() => {
@@ -194,14 +199,15 @@ atbMode$.subscribe(mode => {
 });
 
 state.heroes.forEach((_, i) => {
-  const el = heroNameEls[i];
+  const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
   const hero = state.heroes[i];
   const timer$ = timers$[i];
-  return getClicksForElements$([el, spriteEl])
+  return getClicksForElements$([nameEl, spriteEl])
     .pipe(
       withLatestFrom(timer$, action$),
-      filter(([_, timer, action]) => timer === 100 && !action)
+      filter(([_, timer, _2]) => timer === 100),
+      filter(([_, _2, action]) => !action)
     )
     .subscribe(() => currentHero$.next(hero));
 });
@@ -305,17 +311,32 @@ function incrementTowardsValueFunction(object, key, maxKey) {
 }
 
 state.heroes.forEach((hero, i) => {
-  const incrementValue = incrementTowardsValueFunction(hero, "mp", "maxMp");
-  clock$.pipe(incrementValue).subscribe(val => {
+  // Update mp display
+  const incrementHpValue = incrementTowardsValueFunction(hero, "mp", "maxMp");
+  clock$.pipe(incrementHpValue).subscribe(val => {
     updateIfDifferent(mpEls[i], `${parseInt(val)}`);
   });
-});
 
-state.heroes.forEach((hero, i) => {
-  const incrementValue = incrementTowardsValueFunction(hero, "hp", "maxHp");
-  clock$.pipe(incrementValue).subscribe(val => {
+  // Update hp display
+  const incrementMpValue = incrementTowardsValueFunction(hero, "hp", "maxHp");
+  clock$.pipe(incrementMpValue).subscribe(val => {
     updateIfDifferent(hpEls[i], `${parseInt(val)} / ${state.heroes[i].maxHp}`);
   });
+
+  // Check if hero is dead
+  // const nameEl = heroNameEls[i];
+  const spriteEl = heroSpriteEls[i];
+
+  clock$.pipe(filter(() => hero.hp <= 0)).subscribe(() => setDead(spriteEl));
+  clock$.pipe(filter(() => hero.hp > 0)).subscribe(() => unsetDead(spriteEl));
+});
+
+// Check if characters are dead
+state.enemies.forEach((enemy, i) => {
+  // Check if enemy is dead
+  const spriteEl = enemySpriteEls[i];
+  clock$.pipe(filter(() => enemy.hp <= 0)).subscribe(() => setDead(spriteEl));
+  clock$.pipe(filter(() => enemy.hp > 0)).subscribe(() => unsetDead(spriteEl));
 });
 
 function completeAction() {
@@ -368,7 +389,7 @@ function magic(source, sink, data) {
 function attack(source, sink, damage) {
   console.log(`${source.name} attacks ${sink.name}...`);
   source.wait = 0;
-  source.hp -= damage;
+  sink.hp = Math.max(sink.hp - damage, 0);
   unhighlightEnemies();
   hideSecondaryMenus();
   const sourcePos = getElementPosition(source.el);

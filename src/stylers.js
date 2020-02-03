@@ -63,6 +63,9 @@ const setHide = setClass("hide");
 const unsetShrink = unsetClass("shrink");
 const setShrink = setClass("shrink");
 
+const unsetDead = unsetClass("dead");
+const setDead = setClass("dead");
+
 const setSelected = setClass("selected");
 
 function unsetSelected(element) {
@@ -174,6 +177,8 @@ function showSecondaryMenu(heroIndex) {
   const el = heroMenuEls[heroIndex];
   unsetHide(el);
 }
+
+function hideMenus() {}
 
 function hideMagicMenu() {
   magicMenuEls.forEach(el => {
@@ -288,6 +293,8 @@ export {
   unsetHide,
   setShrink,
   unsetShrink,
+  setDead,
+  unsetDead,
   setOpacity,
   unsetOpacity,
   hideSecondaryMenus,

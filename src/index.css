@@ -72,6 +72,10 @@ body {
   width: 75%;
 }
 
+.dead {
+  transform: rotate(90deg);
+}
+
 .row {
   display: grid;
   align-items: center;
