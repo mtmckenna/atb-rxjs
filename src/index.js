@@ -1,9 +1,8 @@
 // Add items
 // HP lowers on attack
-// MP lowers on magic
-// HP/MP text animates
 // Enemies attack
 // Can win
+// Create separate streams for menuLevels
 
 import {
   concat,
@@ -47,7 +46,7 @@ import {
   atbModeEls,
   itemMenuEls,
   magicMenuEls,
-  secondaryMenuEls
+  getAvailableActions
 } from "./elements";
 
 import {
@@ -77,7 +76,8 @@ import {
   moveLeft,
   setOpacity,
   unsetOpacity,
-  selectAction
+  selectAction,
+  unsetSelectable
 } from "./stylers";
 
 import { characterFromElement, getElementPosition } from "./helpers";
@@ -163,7 +163,7 @@ const timerClock$ = clock$.pipe(
 
 const timers$ = state.heroes.map(hero => {
   return timerClock$.pipe(
-    map(ticking => (ticking ? 0.1 : 0)),
+    map(ticking => (ticking ? 0.3 : 0)),
     map(increase => Math.min(hero.wait + increase, 100))
   );
 });
@@ -211,6 +211,12 @@ currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   const { magic } = hero;
   const menu = magicMenuEls[index];
   fillMagicMenu(menu, magic);
+  // Can't use magic that requires more MP than you have
+  getAvailableActions(menu).forEach(row => {
+    if (hero.magic[row.dataset.index].mpDrain > hero.mp) {
+      unsetSelectable(row);
+    }
+  });
   highlightHero(index);
   showSecondaryMenu(index);
 });
@@ -227,6 +233,7 @@ heroMenuBackClicks$.subscribe(() => {
 
 clicks$
   .pipe(
+    filter(el => el.classList.contains("selectable")),
     filter(el => el.classList.contains("action")),
     withLatestFrom(currentHero$)
   )
@@ -272,7 +279,8 @@ const item$ = actionSelected$.pipe(
 );
 
 attack$.subscribe(({ source, sink }) => {
-  attack(source, sink);
+  const attackDamage = source.attack;
+  attack(source, sink, attackDamage);
   completeAction();
 });
 
@@ -280,6 +288,34 @@ magic$.subscribe(({ source, sink, el }) => {
   const magicData = source.magic[el.dataset.index];
   magic(source, sink, magicData);
   completeAction();
+});
+
+function incrementTowardsValueFunction(object, key, maxKey) {
+  return function(input$) {
+    return input$.pipe(
+      scan(acc => {
+        const diff = object[key] - acc;
+        let inc = object[maxKey] / 240; // Amount to increment by
+        if (diff < 0) inc = -inc;
+        if (diff === 0) inc = 0;
+        return Math.min(Math.max(acc + inc, 0), object[maxKey]);
+      }, object[key])
+    );
+  };
+}
+
+state.heroes.forEach((hero, i) => {
+  const incrementValue = incrementTowardsValueFunction(hero, "mp", "maxMp");
+  clock$.pipe(incrementValue).subscribe(val => {
+    updateIfDifferent(mpEls[i], `${parseInt(val)}`);
+  });
+});
+
+state.heroes.forEach((hero, i) => {
+  const incrementValue = incrementTowardsValueFunction(hero, "hp", "maxHp");
+  clock$.pipe(incrementValue).subscribe(val => {
+    updateIfDifferent(hpEls[i], `${parseInt(val)} / ${state.heroes[i].maxHp}`);
+  });
 });
 
 function completeAction() {
@@ -302,6 +338,8 @@ function getClicksForElements$(elements) {
 function magic(source, sink, data) {
   console.log(`${source.name} magics ${sink.name}...`);
   source.wait = 0;
+  source.mp -= data.mpDrain;
+  if (source.mp < 0) source.mp = 0;
   unhighlightEnemies();
   hideSecondaryMenus();
   const ball = generateMagicBall(data.color);
@@ -327,9 +365,10 @@ function magic(source, sink, data) {
   });
 }
 
-function attack(source, sink) {
+function attack(source, sink, damage) {
   console.log(`${source.name} attacks ${sink.name}...`);
   source.wait = 0;
+  source.hp -= damage;
   unhighlightEnemies();
   hideSecondaryMenus();
   const sourcePos = getElementPosition(source.el);
@@ -360,10 +399,6 @@ function getTransitionEnd$(el, property, transform) {
 function draw() {
   requestAnimationFrame(draw);
   waitFillingEls.forEach((el, i) => updateWaitWidth(el, state.heroes[i].wait));
-  hpEls.forEach((el, i) =>
-    updateIfDifferent(el, `${state.heroes[i].hp} / ${state.heroes[i].maxHp}`)
-  );
-  mpEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].mp}`));
   heroNameEls.forEach((el, i) =>
     updateIfDifferent(el, `${state.heroes[i].name}`)
   );

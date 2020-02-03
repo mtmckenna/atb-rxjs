@@ -109,8 +109,8 @@ const backgroundEl = document.getElementsByClassName("background")[0];
 
 const battleEl = document.getElementsByClassName("top")[0];
 
-function getAvailableActions() {
-  return Array.from(document.getElementsByClassName("action"));
+function getAvailableActions(el = document) {
+  return Array.from(el.getElementsByClassName("action"));
 }
 
 export {

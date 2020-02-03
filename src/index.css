@@ -59,6 +59,10 @@ body {
   text-shadow: 1px 1px 0 black;
 }
 
+.action {
+  color: rgb(179, 179, 179);
+}
+
 .left {
   width: 25%;
   color: rgb(179, 179, 179);
@@ -230,10 +234,6 @@ body {
 
 .sinkable {
   cursor: pointer;
-}
-
-.unselectable {
-  color: rgb(179, 179, 179);
 }
 
 .selectable:hover {

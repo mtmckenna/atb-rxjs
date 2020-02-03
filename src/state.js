@@ -13,18 +13,22 @@ const hero1 = {
   name: "Wizard",
   el: heroSpriteEls[0],
   nameEl: heroNameEls[0],
+  attack: 200,
   maxHp: 1500,
+  maxMp: 100,
   hp: 1250,
-  mp: 75,
+  mp: 25,
   wait: 100,
   magic: magic1,
-  items: ["Potion"]
+  items: ["Potion", "Ether"]
 };
 const hero2 = {
   name: "Firefox",
   el: heroSpriteEls[1],
   nameEl: heroNameEls[1],
+  attack: 300,
   maxHp: 600,
+  maxMp: 300,
   hp: 475,
   mp: 200,
   wait: 100,
@@ -35,8 +39,10 @@ const hero3 = {
   name: "Warrior",
   el: heroSpriteEls[2],
   nameEl: heroNameEls[2],
+  attack: 400,
   maxHp: 250,
-  hp: 750,
+  maxMp: 130,
+  hp: 150,
   mp: 120,
   wait: 50,
   magic: magic3,
@@ -46,6 +52,7 @@ const hero3 = {
 const enemy1 = {
   name: "Deathknight",
   el: enemySpriteEls[0],
+  attack: 100,
   maxHp: 1500,
   hp: 1250,
   mp: 75,
@@ -56,6 +63,7 @@ const enemy1 = {
 const enemy2 = {
   name: "Goblin",
   el: enemySpriteEls[1],
+  attack: 200,
   maxHp: 600,
   hp: 475,
   mp: 200,
@@ -66,6 +74,7 @@ const enemy2 = {
 const enemy3 = {
   name: "Skeleton",
   el: enemySpriteEls[2],
+  attack: 300,
   maxHp: 250,
   hp: 750,
   mp: 120,
@@ -74,7 +83,7 @@ const enemy3 = {
   items: ["Potion", "Potion"]
 };
 
-const settings = { atbMode: "Wait" };
+const settings = { atbMode: "Active" };
 
 const state = {
   heroes: [hero1, hero2, hero3],
