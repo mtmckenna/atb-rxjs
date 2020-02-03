@@ -2,6 +2,7 @@
 // HP lowers on attack
 // Enemies attack
 // Can win
+// distinctUntilChanged
 
 import {
   concat,
@@ -326,17 +327,35 @@ state.heroes.forEach((hero, i) => {
   // Check if hero is dead
   // const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
+  const clockAfterAnimations$ = clock$.pipe(
+    withLatestFrom(animating$, (_, animating) => animating),
+    filter(animating => !animating)
+  );
 
-  clock$.pipe(filter(() => hero.hp <= 0)).subscribe(() => setDead(spriteEl));
-  clock$.pipe(filter(() => hero.hp > 0)).subscribe(() => unsetDead(spriteEl));
+  clockAfterAnimations$
+    .pipe(filter(() => hero.hp <= 0))
+    .subscribe(() => setDead(spriteEl));
+  clockAfterAnimations$
+    .pipe(filter(() => hero.hp > 0))
+    .subscribe(() => unsetDead(spriteEl));
 });
 
 // Check if characters are dead
 state.enemies.forEach((enemy, i) => {
   // Check if enemy is dead
+
+  const clockAfterAnimations$ = clock$.pipe(
+    withLatestFrom(animating$, (_, animating) => animating),
+    filter(animating => !animating)
+  );
+
   const spriteEl = enemySpriteEls[i];
-  clock$.pipe(filter(() => enemy.hp <= 0)).subscribe(() => setDead(spriteEl));
-  clock$.pipe(filter(() => enemy.hp > 0)).subscribe(() => unsetDead(spriteEl));
+  clockAfterAnimations$
+    .pipe(filter(() => enemy.hp <= 0))
+    .subscribe(() => setDead(spriteEl));
+  clockAfterAnimations$
+    .pipe(filter(() => enemy.hp > 0))
+    .subscribe(() => unsetDead(spriteEl));
 });
 
 function completeAction() {
