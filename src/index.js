@@ -81,7 +81,9 @@ import {
   unsetSelectable,
   setDead,
   unsetDead,
-  generateHpDrainText
+  generateHpDrainText,
+  setHeight,
+  setWidth
 } from "./stylers";
 
 import { characterFromElement, getElementPosition, hasClass } from "./helpers";
@@ -415,6 +417,8 @@ function animateHpDrainText(character, drain) {
   const pos = getElementPosition(character.el);
   moveTop(hpDrainText, pos.top);
   moveLeft(hpDrainText, pos.left);
+  setHeight(hpDrainText, pos.height);
+  setWidth(hpDrainText, pos.width);
   const fadeIn$ = getTransitionEnd$(hpDrainText, "opacity", () => setOpacity(hpDrainText, 1.0));
   const fadeOut$ = getTransitionEnd$(hpDrainText, "opacity", () => unsetOpacity(hpDrainText));
   const fade$ = concat(fadeIn$, fadeOut$);

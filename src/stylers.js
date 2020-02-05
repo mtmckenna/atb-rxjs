@@ -87,6 +87,7 @@ const updateWaitWidth = setStyle("width", v => `${v}%`);
 const moveTop = setStyle("top", v => `${v}px`);
 const moveLeft = setStyle("left", v => `${v}px`);
 const setHeight = setStyle("height", v => `${v}px`);
+const setWidth = setStyle("width", v => `${v}px`);
 const setBackgroundImage = setStyle("backgroundImage");
 const setOpacity = setStyle("opacity");
 const unsetOpacity = unsetStyle("opacity");
@@ -307,6 +308,7 @@ export {
   moveTop,
   moveLeft,
   setHeight,
+  setWidth,
   setBackgroundImage,
   resize,
   updateIfDifferent,

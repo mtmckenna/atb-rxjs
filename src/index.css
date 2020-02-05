@@ -312,12 +312,14 @@ body {
 }
 
 .hp-drain {
-  width: 15vh;
-  height: 15vh;
   position: absolute;
   transition: opacity 1s, transform 2s;
   z-index: 3;
   opacity: 0;
   font-size: 3vh;
   text-shadow: 1px 1px 0 black;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
