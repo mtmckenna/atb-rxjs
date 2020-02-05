@@ -1,7 +1,6 @@
 // Add items
 // Enemies attack
 // Can win
-// fix back bug
 
 import {
   concat,
@@ -130,7 +129,7 @@ const atbMode$ = fromEvent(atbModeEls, "click").pipe(
   startWith(state.settings.atbMode)
 );
 
-const characterStillSelected$ = currentHero$.pipe(mapTo(false));
+const characterHasNotChanged$ = currentHero$.pipe(mapTo(false));
 const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
 
 const clockAfterAnimations$ = clock$.pipe(
@@ -142,7 +141,7 @@ const menuLinkClicks$ = clicks$.pipe(
   filter(el => hasClass(el, "menu-link")),
   pluck("dataset", "menuName")
 );
-const menuLevels$ = merge(menuLinkClicks$, characterStillSelected$, secondaryMenuBackClicks$);
+const menuLevels$ = merge(menuLinkClicks$, characterHasNotChanged$, secondaryMenuBackClicks$);
 const magicMenu$ = menuLevels$.pipe(filter(menu => menu === "magic"));
 const itemMenu$ = menuLevels$.pipe(filter(menu => menu === "item"));
 const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
@@ -167,6 +166,10 @@ const timers$ = state.heroes.map(hero => {
 });
 
 resize$.subscribe(resize);
+
+menuLevels$.subscribe(() => {
+  action$.next(null);
+});
 
 noMenu$.subscribe(() => {
   hideMagicMenu();
@@ -196,9 +199,12 @@ state.heroes.forEach((_, i) => {
   const timer$ = timers$[i];
   return getClicksForElements$([nameEl, spriteEl])
     .pipe(
-      withLatestFrom(timer$, action$),
-      filter(([_, timer, _2]) => timer === 100),
-      filter(([_, _2, action]) => !action)
+      withLatestFrom(timer$),
+      filter(([_, timer]) => timer === 100),
+      map(([event, _]) => event),
+      withLatestFrom(action$),
+      filter(([_, action]) => !action),
+      map(([event, _]) => event)
     )
     .subscribe(() => currentHero$.next(hero));
 });
@@ -302,7 +308,6 @@ state.heroes.forEach((hero, i) => {
 // Check if characters are dead
 state.enemies.forEach((enemy, i) => {
   // Check if enemy is dead
-
   const spriteEl = enemySpriteEls[i];
   const deadOperator = getCharacterIsDeadOperator(enemy);
   const aliveOperator = getCharacterIsAliveOperator(enemy);
