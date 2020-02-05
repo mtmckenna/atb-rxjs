@@ -1,7 +1,7 @@
 // Add items
 // Enemies attack
 // Can win
-// consolidate clicks on clicks$
+// fix back bug
 
 import {
   concat,
@@ -125,13 +125,13 @@ const clicks$ = fromEvent(document, "click").pipe(
 
 const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
-
-const characterStillSelected$ = currentHero$.pipe(mapTo(false));
-const secondaryMenuBackClicks$ = fromEvent(secondaryMenuBackEls, "click").pipe(mapTo(false));
 const atbMode$ = fromEvent(atbModeEls, "click").pipe(
   pluck("target", "dataset", "mode"),
   startWith(state.settings.atbMode)
 );
+
+const characterStillSelected$ = currentHero$.pipe(mapTo(false));
+const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
 
 const clockAfterAnimations$ = clock$.pipe(
   withLatestFrom(animating$, (_, animating) => animating),
@@ -239,8 +239,7 @@ clicks$
     return action$.next({ source: hero, action, el });
   });
 
-action$.pipe(filter(action => !!action)).subscribe(({ el, action }) => {
-  console.log(action);
+action$.pipe(filter(action => !!action)).subscribe(({ el }) => {
   setAllCharactersAsSinkable();
   selectAction(el);
 });
@@ -323,7 +322,6 @@ function waitForSinkClickOperator(input$) {
     switchMap(({ source, el }) =>
       sinkClicks$.pipe(
         takeUntil(actionUnselected$),
-        tap(() => console.log("still")),
         take(1),
         map(sinkEl => ({ source, sink: characterFromElement(sinkEl), el }))
       )
