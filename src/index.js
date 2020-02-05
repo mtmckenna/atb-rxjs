@@ -1,8 +1,7 @@
 // Add items
-// HP lowers on attack
 // Enemies attack
 // Can win
-// distinctUntilChanged
+// consolidate clicks on clicks$
 
 import {
   concat,
@@ -17,6 +16,7 @@ import {
 } from "rxjs";
 
 import {
+  distinctUntilChanged,
   filter,
   map,
   pluck,
@@ -80,19 +80,18 @@ import {
   selectAction,
   unsetSelectable,
   setDead,
-  unsetDead
+  unsetDead,
+  generateHpDrainText
 } from "./stylers";
 
-import { characterFromElement, getElementPosition, isHero } from "./helpers";
+import { characterFromElement, getElementPosition, hasClass } from "./helpers";
 
 import state from "./state";
 
-const currentHero$ = new BehaviorSubject(null);
+const currentHero$ = new BehaviorSubject(null).pipe(distinctUntilChanged());
 const action$ = new BehaviorSubject(null);
 const paused$ = new BehaviorSubject(false);
-const animatingCount$ = new BehaviorSubject(0).pipe(
-  scan((acc, val) => acc + val, 0)
-);
+const animatingCount$ = new BehaviorSubject(0).pipe(scan((acc, val) => acc + val, 0));
 
 const actioning$ = action$.pipe(map(action => !!action));
 const animating$ = animatingCount$.pipe(map(count => count > 0));
@@ -124,42 +123,32 @@ const clicks$ = fromEvent(document, "click").pipe(
 
 const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
-const menuLinkClicks$ = clicks$.pipe(
-  filter(el => el.classList.contains("menu-link")),
-  pluck("dataset", "menuName")
-  // withLatestFrom(currentHero$)
-);
 
 const characterStillSelected$ = currentHero$.pipe(mapTo(false));
-
-const secondaryMenuBackClicks$ = fromEvent(secondaryMenuBackEls, "click").pipe(
-  mapTo(false)
-);
-
-const menuLevels$ = merge(
-  menuLinkClicks$,
-  characterStillSelected$,
-  secondaryMenuBackClicks$
-);
-
-const magicMenu$ = menuLevels$.pipe(filter(menu => menu === "magic"));
-const itemMenu$ = menuLevels$.pipe(filter(menu => menu === "item"));
-const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
-
-const heroMenuBackClicks$ = getClicksForElements$(heroMenuBackEls);
-
-// Any element on which an action (e.g. attack, magic) can happen
-const sinkClicks$ = clicks$.pipe(
-  filter(el => el.classList.contains("sinkable"))
-);
-
-const actionSelected$ = action$.pipe(filter(action => !!action));
-const actionUnselected$ = action$.pipe(filter(action => !action));
-
+const secondaryMenuBackClicks$ = fromEvent(secondaryMenuBackEls, "click").pipe(mapTo(false));
 const atbMode$ = fromEvent(atbModeEls, "click").pipe(
   pluck("target", "dataset", "mode"),
   startWith(state.settings.atbMode)
 );
+
+const clockAfterAnimations$ = clock$.pipe(
+  withLatestFrom(animating$, (_, animating) => animating),
+  filter(animating => !animating)
+);
+const heroMenuBackClicks$ = getClicksForElements$(heroMenuBackEls);
+const menuLinkClicks$ = clicks$.pipe(
+  filter(el => hasClass(el, "menu-link")),
+  pluck("dataset", "menuName")
+);
+const menuLevels$ = merge(menuLinkClicks$, characterStillSelected$, secondaryMenuBackClicks$);
+const magicMenu$ = menuLevels$.pipe(filter(menu => menu === "magic"));
+const itemMenu$ = menuLevels$.pipe(filter(menu => menu === "item"));
+const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
+
+// Any element on which an action (e.g. attack, magic) can happen
+const sinkClicks$ = clicks$.pipe(filter(el => hasClass(el, "sinkable")));
+const actionSelected$ = action$.pipe(filter(action => !!action));
+const actionUnselected$ = action$.pipe(filter(action => !action));
 
 const timerClock$ = clock$.pipe(
   withLatestFrom(atbMode$, (_, mode) => mode),
@@ -181,8 +170,7 @@ noMenu$.subscribe(() => {
   hideMagicMenu();
 });
 
-magicMenu$.subscribe(() => {
-  const hero = currentHero$.value;
+magicMenu$.pipe(withLatestFrom(currentHero$)).subscribe(([_, hero]) => {
   showMagicMenu(state.heroes.indexOf(hero));
 });
 
@@ -240,8 +228,8 @@ heroMenuBackClicks$.subscribe(() => {
 
 clicks$
   .pipe(
-    filter(el => el.classList.contains("selectable")),
-    filter(el => el.classList.contains("action")),
+    filter(el => hasClass(el, "selectable")),
+    filter(el => hasClass(el, "action")),
     withLatestFrom(currentHero$)
   )
   .subscribe(([el, hero]) => {
@@ -249,7 +237,8 @@ clicks$
     return action$.next({ source: hero, action, el });
   });
 
-action$.pipe(filter(action => !!action)).subscribe(({ el }) => {
+action$.pipe(filter(action => !!action)).subscribe(({ el, action }) => {
+  console.log(action);
   setAllCharactersAsSinkable();
   selectAction(el);
 });
@@ -259,30 +248,19 @@ actionUnselected$.subscribe(() => {
   unsetAllCharactersAsSinkable();
 });
 
-const waitForSinkClick = input$ =>
-  input$.pipe(
-    switchMap(({ source, el }) =>
-      sinkClicks$.pipe(
-        takeUntil(actionUnselected$),
-        take(1),
-        map(sinkEl => ({ source, sink: characterFromElement(sinkEl), el }))
-      )
-    )
-  );
-
 const attack$ = actionSelected$.pipe(
   filter(({ action }) => action === "attack"),
-  waitForSinkClick
+  waitForSinkClickOperator
 );
 
 const magic$ = actionSelected$.pipe(
   filter(({ action }) => action === "magic"),
-  waitForSinkClick
+  waitForSinkClickOperator
 );
 
 const item$ = actionSelected$.pipe(
   filter(({ action }) => action === "item"),
-  waitForSinkClick
+  waitForSinkClickOperator
 );
 
 attack$.subscribe(({ source, sink }) => {
@@ -297,7 +275,61 @@ magic$.subscribe(({ source, sink, el }) => {
   completeAction();
 });
 
-function incrementTowardsValueFunction(object, key, maxKey) {
+state.heroes.forEach((hero, i) => {
+  // Update mp display
+  const incrementHpValue = getIncrementTowardsValueOperator(hero, "mp", "maxMp");
+  clock$.pipe(incrementHpValue).subscribe(val => {
+    updateIfDifferent(mpEls[i], `${parseInt(val)}`);
+  });
+
+  // Update hp display
+  const incrementMpValue = getIncrementTowardsValueOperator(hero, "hp", "maxHp");
+  clock$.pipe(incrementMpValue).subscribe(val => {
+    updateIfDifferent(hpEls[i], `${parseInt(val)} / ${state.heroes[i].maxHp}`);
+  });
+
+  // Check if hero is dead
+  // const nameEl = heroNameEls[i];
+  const spriteEl = heroSpriteEls[i];
+  const deadOperator = getCharacterIsDeadOperator(hero);
+  const aliveOperator = getCharacterIsAliveOperator(hero);
+
+  clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(spriteEl));
+  clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(spriteEl));
+});
+
+// Check if characters are dead
+state.enemies.forEach((enemy, i) => {
+  // Check if enemy is dead
+
+  const spriteEl = enemySpriteEls[i];
+  const deadOperator = getCharacterIsDeadOperator(enemy);
+  const aliveOperator = getCharacterIsAliveOperator(enemy);
+  clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(spriteEl));
+  clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(spriteEl));
+});
+
+timers$.forEach((timer$, i) => {
+  const hero = state.heroes[i];
+  timer$.subscribe(time => (hero.wait = time));
+  timer$.pipe(filter(time => time === 100)).subscribe(() => setHeroReady(i));
+  timer$.pipe(filter(time => time < 100)).subscribe(() => unsetHeroReady(i));
+});
+
+function waitForSinkClickOperator(input$) {
+  return input$.pipe(
+    switchMap(({ source, el }) =>
+      sinkClicks$.pipe(
+        takeUntil(actionUnselected$),
+        tap(() => console.log("still")),
+        take(1),
+        map(sinkEl => ({ source, sink: characterFromElement(sinkEl), el }))
+      )
+    )
+  );
+}
+
+function getIncrementTowardsValueOperator(object, key, maxKey) {
   return function(input$) {
     return input$.pipe(
       scan(acc => {
@@ -311,64 +343,18 @@ function incrementTowardsValueFunction(object, key, maxKey) {
   };
 }
 
-state.heroes.forEach((hero, i) => {
-  // Update mp display
-  const incrementHpValue = incrementTowardsValueFunction(hero, "mp", "maxMp");
-  clock$.pipe(incrementHpValue).subscribe(val => {
-    updateIfDifferent(mpEls[i], `${parseInt(val)}`);
-  });
+function getCharacterIsDeadOperator(character) {
+  return input$ => input$.pipe(filter(() => character.hp <= 0));
+}
 
-  // Update hp display
-  const incrementMpValue = incrementTowardsValueFunction(hero, "hp", "maxHp");
-  clock$.pipe(incrementMpValue).subscribe(val => {
-    updateIfDifferent(hpEls[i], `${parseInt(val)} / ${state.heroes[i].maxHp}`);
-  });
-
-  // Check if hero is dead
-  // const nameEl = heroNameEls[i];
-  const spriteEl = heroSpriteEls[i];
-  const clockAfterAnimations$ = clock$.pipe(
-    withLatestFrom(animating$, (_, animating) => animating),
-    filter(animating => !animating)
-  );
-
-  clockAfterAnimations$
-    .pipe(filter(() => hero.hp <= 0))
-    .subscribe(() => setDead(spriteEl));
-  clockAfterAnimations$
-    .pipe(filter(() => hero.hp > 0))
-    .subscribe(() => unsetDead(spriteEl));
-});
-
-// Check if characters are dead
-state.enemies.forEach((enemy, i) => {
-  // Check if enemy is dead
-
-  const clockAfterAnimations$ = clock$.pipe(
-    withLatestFrom(animating$, (_, animating) => animating),
-    filter(animating => !animating)
-  );
-
-  const spriteEl = enemySpriteEls[i];
-  clockAfterAnimations$
-    .pipe(filter(() => enemy.hp <= 0))
-    .subscribe(() => setDead(spriteEl));
-  clockAfterAnimations$
-    .pipe(filter(() => enemy.hp > 0))
-    .subscribe(() => unsetDead(spriteEl));
-});
+function getCharacterIsAliveOperator(character) {
+  return input$ => input$.pipe(filter(() => character.hp > 0));
+}
 
 function completeAction() {
   action$.next(null);
   currentHero$.next(null);
 }
-
-timers$.forEach((timer$, i) => {
-  const hero = state.heroes[i];
-  timer$.subscribe(time => (hero.wait = time));
-  timer$.pipe(filter(time => time === 100)).subscribe(() => setHeroReady(i));
-  timer$.pipe(filter(time => time < 100)).subscribe(() => unsetHeroReady(i));
-});
 
 function getClicksForElements$(elements) {
   if (!Array.isArray(elements)) elements = [elements];
@@ -377,9 +363,9 @@ function getClicksForElements$(elements) {
 
 function magic(source, sink, data) {
   console.log(`${source.name} magics ${sink.name}...`);
-  source.wait = 0;
-  source.mp -= data.mpDrain;
-  if (source.mp < 0) source.mp = 0;
+  const hpDrain = sink.hp - data.damage;
+  updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
+  updateCharacterStats(sink, sink.wait, hpDrain, sink.mp);
   unhighlightEnemies();
   hideSecondaryMenus();
   const ball = generateMagicBall(data.color);
@@ -390,16 +376,14 @@ function magic(source, sink, data) {
   const x = sinkPos.left - sourcePos.left;
   const y = sinkPos.top - sourcePos.top;
 
-  const fadeIn$ = getTransitionEnd$(ball, "opacity", () =>
-    setOpacity(ball, 1.0)
-  );
-  const toSink$ = getTransitionEnd$(ball, "transform", () =>
-    setTranslate(ball, x, y)
-  );
+  // Animate magic ball
+  const fadeIn$ = getTransitionEnd$(ball, "opacity", () => setOpacity(ball, 1.0));
+  const toSink$ = getTransitionEnd$(ball, "transform", () => setTranslate(ball, x, y));
   const fadeOut$ = getTransitionEnd$(ball, "opacity", () => unsetOpacity(ball));
   const animation$ = concat(fadeIn$, toSink$, fadeOut$);
   animatingCount$.next(1);
   animation$.subscribe(null, null, () => {
+    animateHpDrainText(sink, data.damage);
     ball.remove();
     animatingCount$.next(-1);
   });
@@ -416,15 +400,36 @@ function attack(source, sink, damage) {
   const x = sinkPos.left - sourcePos.left;
   const y = sinkPos.top - sourcePos.top;
 
-  const toSink$ = getTransitionEnd$(source.el, "transform", () =>
-    setTranslate(source.el, x, y)
-  );
-  const fromSink$ = getTransitionEnd$(source.el, "transform", () =>
-    unsetTranslate(source.el)
-  );
+  const toSink$ = getTransitionEnd$(source.el, "transform", () => setTranslate(source.el, x, y));
+  const fromSink$ = getTransitionEnd$(source.el, "transform", () => unsetTranslate(source.el));
   const animation$ = concat(toSink$, fromSink$);
   animatingCount$.next(1);
-  animation$.subscribe(null, null, () => animatingCount$.next(-1));
+  animation$.subscribe(null, null, () => {
+    animateHpDrainText(sink, damage);
+    animatingCount$.next(-1);
+  });
+}
+
+function animateHpDrainText(character, drain) {
+  const hpDrainText = generateHpDrainText(drain);
+  const pos = getElementPosition(character.el);
+  moveTop(hpDrainText, pos.top);
+  moveLeft(hpDrainText, pos.left);
+  const fadeIn$ = getTransitionEnd$(hpDrainText, "opacity", () => setOpacity(hpDrainText, 1.0));
+  const fadeOut$ = getTransitionEnd$(hpDrainText, "opacity", () => unsetOpacity(hpDrainText));
+  const fade$ = concat(fadeIn$, fadeOut$);
+  const floatUp$ = getTransitionEnd$(hpDrainText, "transform", () =>
+    setTranslate(hpDrainText, 0, -pos.height / 2)
+  );
+
+  floatUp$.subscribe();
+  fade$.subscribe(null, null, () => hpDrainText.remove());
+}
+
+function updateCharacterStats(character, wait, hp, mp) {
+  character.hp = Math.min(Math.max(hp, 0), character.maxHp);
+  character.mp = Math.min(Math.max(mp, 0), character.maxMp);
+  character.wait = wait;
 }
 
 function getTransitionEnd$(el, property, transform) {
@@ -439,9 +444,7 @@ function getTransitionEnd$(el, property, transform) {
 function draw() {
   requestAnimationFrame(draw);
   waitFillingEls.forEach((el, i) => updateWaitWidth(el, state.heroes[i].wait));
-  heroNameEls.forEach((el, i) =>
-    updateIfDifferent(el, `${state.heroes[i].name}`)
-  );
+  heroNameEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
   updateIfDifferent(selectedAtbEl, state.settings.atbMode);
 }
 

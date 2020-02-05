@@ -16,7 +16,11 @@ function characterFromElement(el) {
 
 function getElementPosition(el) {
   const pos = el.getBoundingClientRect();
-  return { left: pos.left, top: pos.top };
+  return { left: pos.left, top: pos.top, width: pos.width, height: pos.height };
 }
 
-export { isHero, isAction, characterFromElement, getElementPosition };
+function hasClass(el, className) {
+  return el.classList.contains(className);
+}
+
+export { isHero, isAction, characterFromElement, getElementPosition, hasClass };

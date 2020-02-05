@@ -14,6 +14,8 @@ import {
   getAvailableActions
 } from "./elements";
 
+import { hasClass } from "./helpers";
+
 function setStyle(propName, formattingFunction = v => v) {
   return function(el) {
     const args = Array.from(arguments).slice(1, arguments.length);
@@ -34,7 +36,7 @@ function unsetStyle(propName) {
 
 function setClass(className) {
   return function(el) {
-    if (!el.classList.contains(className)) {
+    if (!hasClass(el, className)) {
       el.classList.add(className);
     }
   };
@@ -42,7 +44,7 @@ function setClass(className) {
 
 function unsetClass(className) {
   return function(el) {
-    if (el.classList.contains(className)) {
+    if (hasClass(el, className)) {
       el.classList.remove(className);
     }
   };
@@ -79,10 +81,7 @@ const setMagicBallBackground = setStyle(
   v => `radial-gradient(${v} 0%, rgba(0, 0, 0, 0) 50%)`
 );
 
-const setTranslate = setStyle(
-  "transform",
-  (left, top) => `translate(${left}px, ${top}px)`
-);
+const setTranslate = setStyle("transform", (left, top) => `translate(${left}px, ${top}px)`);
 const unsetTranslate = unsetStyle("transform");
 const updateWaitWidth = setStyle("width", v => `${v}%`);
 const moveTop = setStyle("top", v => `${v}px`);
@@ -199,9 +198,7 @@ function resize() {
   const rotatedGroundHeight = height * cosx;
   const groundOffset = height - rotatedGroundHeight;
   moveTop(groundEl, groundOffset / 2);
-  Array.from(spriteWrapperEls).forEach(el =>
-    setHeight(el, rotatedGroundHeight)
-  );
+  Array.from(spriteWrapperEls).forEach(el => setHeight(el, rotatedGroundHeight));
   setHeight(backgroundEl, groundOffset);
 }
 
@@ -259,6 +256,14 @@ function generateMagicBall(color) {
   return ball;
 }
 
+function generateHpDrainText(drain) {
+  const text = document.createElement("div");
+  text.classList.add("hp-drain");
+  text.textContent = drain;
+  battleEl.appendChild(text);
+  return text;
+}
+
 function selectAction(el) {
   const actionEls = getAvailableActions();
   actionEls.forEach(unsetSelected);
@@ -309,5 +314,6 @@ export {
   showMagicMenu,
   hideMagicMenu,
   setMagicBallBackground,
-  selectAction
+  selectAction,
+  generateHpDrainText
 };

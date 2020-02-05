@@ -2,6 +2,9 @@
   "dependencies": {
     "rxjs": "^6.5.4"
   },
+  "prettier": {
+    "printWidth": 100
+  },
   "scripts": {
     "start": "parcel index.html",
     "build": "parcel build index.html"

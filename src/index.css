@@ -261,8 +261,7 @@ body {
   height: 100%;
   width: 100%;
   transform: rotate3d(1, 0, 0, 45deg);
-  background: linear-gradient(rgba(84, 130, 93, 1), rgba(0, 0, 0, 0)),
-    url("../images/grass.png");
+  background: linear-gradient(rgba(84, 130, 93, 1), rgba(0, 0, 0, 0)), url("../images/grass.png");
   z-index: 0;
 }
 
@@ -310,4 +309,15 @@ body {
   transition: 1s;
   z-index: 3;
   opacity: 0;
+}
+
+.hp-drain {
+  width: 15vh;
+  height: 15vh;
+  position: absolute;
+  transition: opacity 1s, transform 2s;
+  z-index: 3;
+  opacity: 0;
+  font-size: 3vh;
+  text-shadow: 1px 1px 0 black;
 }
