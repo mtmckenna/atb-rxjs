@@ -1,6 +1,8 @@
-// Add items
+// Add item animation
 // Enemies attack
 // Can win
+// better zipping in of boxes
+// bug where mp doesn't go all the way up
 
 import {
   concat,
@@ -55,7 +57,6 @@ import {
   highlightHero,
   setHeroReady,
   unsetHeroReady,
-  setSelected,
   setShrink,
   unsetShrink,
   showSecondaryMenu,
@@ -82,7 +83,10 @@ import {
   unsetDead,
   generateHpDrainText,
   setHeight,
-  setWidth
+  setWidth,
+  showItemMenu,
+  hideItemMenu,
+  fillItemMenu
 } from "./stylers";
 
 import { characterFromElement, getElementPosition, hasClass } from "./helpers";
@@ -173,6 +177,11 @@ menuLevels$.subscribe(() => {
 
 noMenu$.subscribe(() => {
   hideMagicMenu();
+  hideItemMenu();
+});
+
+itemMenu$.pipe(withLatestFrom(currentHero$)).subscribe(([_, hero]) => {
+  showItemMenu(state.heroes.indexOf(hero));
 });
 
 magicMenu$.pipe(withLatestFrom(currentHero$)).subscribe(([_, hero]) => {
@@ -211,11 +220,13 @@ state.heroes.forEach((_, i) => {
 
 currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   const index = state.heroes.indexOf(hero);
-  const { magic } = hero;
-  const menu = magicMenuEls[index];
-  fillMagicMenu(menu, magic);
+  const { magic, items } = hero;
+  const magicMenu = magicMenuEls[index];
+  const itemcMenu = itemMenuEls[index];
+  fillMagicMenu(magicMenu, magic);
+  fillItemMenu(itemcMenu, items);
   // Can't use magic that requires more MP than you have
-  getAvailableActions(menu).forEach(row => {
+  getAvailableActions(magicMenu).forEach(row => {
     if (hero.magic[row.dataset.index].mpDrain > hero.mp) {
       unsetSelectable(row);
     }
@@ -278,7 +289,13 @@ attack$.subscribe(({ source, sink }) => {
 
 magic$.subscribe(({ source, sink, el }) => {
   const magicData = source.magic[el.dataset.index];
-  magic(source, sink, magicData);
+  useMagic(source, sink, magicData);
+  completeAction();
+});
+
+item$.subscribe(({ source, sink, el }) => {
+  const itemData = source.items[el.dataset.index];
+  useItem(source, sink, itemData);
   completeAction();
 });
 
@@ -366,7 +383,14 @@ function getClicksForElements$(elements) {
   return clicks$.pipe(filter(el => elements.includes(el)));
 }
 
-function magic(source, sink, data) {
+function useItem(source, sink, data) {
+  console.log(`${source.name} items ${sink.name}...`);
+  const item = source.items.find(item => (item.name = data.name));
+  source.items.splice(source.items.indexOf(item), 1);
+  data.effect(sink);
+}
+
+function useMagic(source, sink, data) {
   console.log(`${source.name} magics ${sink.name}...`);
   const hpDrain = sink.hp - data.damage;
   updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);

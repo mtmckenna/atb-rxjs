@@ -178,8 +178,6 @@ function showSecondaryMenu(heroIndex) {
   unsetHide(el);
 }
 
-function hideMenus() {}
-
 function hideMagicMenu() {
   magicMenuEls.forEach(el => {
     setHide(el);
@@ -189,6 +187,18 @@ function hideMagicMenu() {
 
 function showMagicMenu(heroIndex) {
   const el = magicMenuEls[heroIndex];
+  unsetHide(el);
+}
+
+function hideItemMenu() {
+  itemMenuEls.forEach(el => {
+    setHide(el);
+    unsetSelected(el);
+  });
+}
+
+function showItemMenu(heroIndex) {
+  const el = itemMenuEls[heroIndex];
   unsetHide(el);
 }
 
@@ -315,6 +325,8 @@ export {
   updateWaitWidth,
   showMagicMenu,
   hideMagicMenu,
+  showItemMenu,
+  hideItemMenu,
   setMagicBallBackground,
   selectAction,
   generateHpDrainText
