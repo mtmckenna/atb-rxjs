@@ -32,6 +32,9 @@ const setShrink = setClass("shrink");
 
 const setSelected = setClass("selected");
 
+const setWon = setClass("won");
+const unsetWon = unsetClass("won");
+
 function unsetSelected(element) {
   element.classList.remove("selected");
   const children = Array.from(element.getElementsByClassName("selected"));
@@ -379,5 +382,7 @@ export {
   generateHpDrainText,
   generateItemSquare,
   setRotate,
-  setScale
+  setScale,
+  setWon,
+  unsetWon
 };

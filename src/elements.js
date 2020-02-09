@@ -5,9 +5,7 @@ const itemMenu = document.getElementById("item-menu");
 const waitEls = Array(3)
   .fill()
   .map((_, i) => {
-    return document
-      .getElementById(`hero-${i}-stats`)
-      .getElementsByClassName("progress-bar")[0];
+    return document.getElementById(`hero-${i}-stats`).getElementsByClassName("progress-bar")[0];
   });
 
 const waitFillingEls = Array(3)
@@ -25,33 +23,25 @@ const heroNameEls = Array(3)
 const hpEls = Array(3)
   .fill()
   .map((_, i) => {
-    return document
-      .getElementById(`hero-${i}-stats`)
-      .getElementsByClassName("hp")[0];
+    return document.getElementById(`hero-${i}-stats`).getElementsByClassName("hp")[0];
   });
 
 const mpEls = Array(3)
   .fill()
   .map((_, i) => {
-    return document
-      .getElementById(`hero-${i}-stats`)
-      .getElementsByClassName("mp")[0];
+    return document.getElementById(`hero-${i}-stats`).getElementsByClassName("mp")[0];
   });
 
 const heroSpriteEls = Array(3)
   .fill()
   .map((_, i) => {
-    return document
-      .getElementById(`hero-${i}`)
-      .getElementsByClassName("sprite")[0];
+    return document.getElementById(`hero-${i}`).getElementsByClassName("sprite")[0];
   });
 
 const enemySpriteEls = Array(3)
   .fill()
   .map((_, i) => {
-    return document
-      .getElementById(`enemy-${i}`)
-      .getElementsByClassName("sprite")[0];
+    return document.getElementById(`enemy-${i}`).getElementsByClassName("sprite")[0];
   });
 
 const heroMenuEls = Array(3)
@@ -87,9 +77,7 @@ const secondaryMenuBackEls = secondaryMenuEls.map(
   el => el.getElementsByClassName("secondary-back")[0]
 );
 
-const heroMenuBackEls = heroMenuEls.map(
-  el => el.getElementsByClassName("hero-back")[0]
-);
+const heroMenuBackEls = heroMenuEls.map(el => el.getElementsByClassName("hero-back")[0]);
 
 const unpauseEl = document.getElementById("unpause");
 
@@ -108,6 +96,9 @@ const spriteWrapperEls = document.getElementsByClassName("sprites");
 const backgroundEl = document.getElementsByClassName("background")[0];
 
 const battleEl = document.getElementsByClassName("top")[0];
+
+const wonEl = document.getElementById("won");
+const lostEl = document.getElementById("lost");
 
 function getAvailableActions(el = document) {
   return Array.from(el.getElementsByClassName("action"));
@@ -136,5 +127,7 @@ export {
   groundEl,
   spriteWrapperEls,
   backgroundEl,
+  wonEl,
+  lostEl,
   getAvailableActions
 };

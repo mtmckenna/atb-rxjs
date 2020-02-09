@@ -148,6 +148,22 @@ body {
   animation: flash 1.25s linear infinite;
 }
 
+.won {
+  animation-duration: 0.25s;
+  animation-name: animation-jump;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+@keyframes animation-jump {
+  from {
+    transform: scale(-1, 1) translate(0, 0);
+  }
+  to {
+    transform: scale(-1, 1) translate(0, -25px);
+  }
+}
+
 .sprite-wrapper {
   display: flex;
   flex-direction: column;
@@ -276,6 +292,11 @@ body {
   flex-direction: column;
   pointer-events: auto;
   transition: 0.75s;
+}
+
+.overlay.battle-over {
+  width: 25vw;
+  height: 25vw;
 }
 
 .overlay-wrapper {

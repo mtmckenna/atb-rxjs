@@ -1,5 +1,5 @@
+// pause animations
 // Enemies attack
-// Can win
 
 import {
   concat,
@@ -44,7 +44,9 @@ import {
   itemMenuEls,
   magicMenuEls,
   getAvailableActions,
-  enemySpriteEls
+  enemySpriteEls,
+  wonEl,
+  lostEl
 } from "./elements";
 
 import {
@@ -85,7 +87,8 @@ import {
   generateItemSquare,
   setRotate,
   setSelectable,
-  setScale
+  setScale,
+  setWon
 } from "./stylers";
 
 import { characterFromElement, getElementPosition, hasClass } from "./helpers";
@@ -156,6 +159,7 @@ const sinkClicks$ = clicks$.pipe(filter(el => hasClass(el, "sinkable")));
 const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
 const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
+const victory$ = clockAfterAnimations$.pipe(filter(() => state.enemies.every(c => c.hp <= 0)));
 
 resize$.subscribe(resize);
 
@@ -283,6 +287,14 @@ item$.subscribe(({ source, sink, el }) => {
   const itemData = source.items[el.dataset.index];
   useItem(source, sink, itemData);
   completeAction();
+});
+
+victory$.subscribe(() => {
+  setShrink(pauseEl);
+  unsetShrink(wonEl);
+  paused$.next(true);
+  const heroes = state.heroes.filter(hero => hero.hp > 0);
+  heroes.forEach(hero => setWon(hero.el));
 });
 
 state.heroes.forEach((hero, i) => {
