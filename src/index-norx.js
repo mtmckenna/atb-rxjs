@@ -26,7 +26,8 @@ import {
   unhighlightAllCharacters,
   resize,
   updateIfDifferent,
-  updateWaitWidth
+  updateWaitWidth,
+  setOpacity
 } from "./stylers";
 
 import { isAction, characterFromElement, getElementPosition } from "./helpers";
@@ -203,6 +204,8 @@ function config() {
   state.enemies.forEach((_, i) => {
     battleState.heroes[i] = { animating: false };
   });
+
+  setOpacity(document.body, 1.0);
 }
 
 config();

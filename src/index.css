@@ -72,10 +72,6 @@ body {
   width: 75%;
 }
 
-.dead {
-  transform: rotate(90deg);
-}
-
 .row {
   display: grid;
   align-items: center;
@@ -182,10 +178,6 @@ body {
 
 .sprite-skeleton {
   background-image: url("../images/skeleton.png");
-}
-
-.hero.sprite {
-  transform: scaleX(-1);
 }
 
 .hero-menu {

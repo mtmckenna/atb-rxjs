@@ -30,9 +30,6 @@ const setHide = setClass("hide");
 const unsetShrink = unsetClass("shrink");
 const setShrink = setClass("shrink");
 
-const unsetDead = unsetClass("dead");
-const setDead = setClass("dead");
-
 const setSelected = setClass("selected");
 
 function unsetSelected(element) {
@@ -52,9 +49,11 @@ const translateFormatter = combineTransformFunction(
 );
 
 const rotateFormatter = combineTransformFunction("rotate", degrees => `rotate(${degrees}deg)`);
+const scaleFormatter = combineTransformFunction("scale", (x, y) => `scale(${x}, ${y})`);
 
 const setTranslate = setStyle("transform", translateFormatter);
 const setRotate = setStyle("transform", rotateFormatter);
+const setScale = setStyle("transform", scaleFormatter);
 const updateWaitWidth = setStyle("width", v => `${v}%`);
 const moveTop = setStyle("top", v => `${v}px`);
 const moveLeft = setStyle("left", v => `${v}px`);
@@ -63,6 +62,8 @@ const setWidth = setStyle("width", v => `${v}px`);
 const setBackgroundImage = setStyle("backgroundImage");
 const setOpacity = setStyle("opacity");
 const unsetOpacity = unsetStyle("opacity");
+const setDead = el => setRotate(el, 90);
+const unsetDead = el => setRotate(el);
 
 function combineTransformFunction(transformProp, formattingFunction) {
   return function() {
@@ -186,7 +187,7 @@ function unhighlightEnemies() {
 function setHeroReady(heroIndex) {
   const heroName = heroNameEls[heroIndex];
   const heroSprite = heroSpriteEls[heroIndex];
-  [heroName, heroSprite].forEach(el => {
+  [(heroName, heroSprite)].forEach(el => {
     setSelectable(el);
     setReady(el);
   });
@@ -206,6 +207,9 @@ function hideSecondaryMenus() {
     setHide(el);
     unsetSelected(el);
   });
+
+  hideMagicMenu();
+  hideItemMenu();
 }
 
 function showSecondaryMenu(heroIndex) {
@@ -374,5 +378,6 @@ export {
   selectAction,
   generateHpDrainText,
   generateItemSquare,
-  setRotate
+  setRotate,
+  setScale
 };

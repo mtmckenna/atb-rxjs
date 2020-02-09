@@ -1,5 +1,7 @@
 // Enemies attack
 // Can win
+// remove draw function
+// filterWithLatestFRom
 
 import {
   concat,
@@ -20,12 +22,12 @@ import {
   pluck,
   share,
   switchMap,
-  take,
   scan,
   takeUntil,
   withLatestFrom,
   startWith,
   tap,
+  take,
   mapTo
 } from "rxjs/operators";
 
@@ -85,7 +87,8 @@ import {
   fillItemMenu,
   generateItemSquare,
   setRotate,
-  setSelectable
+  setSelectable,
+  setScale
 } from "./stylers";
 
 import { characterFromElement, getElementPosition, hasClass } from "./helpers";
@@ -110,6 +113,11 @@ const atbMap = {
   Wait: [animating$, actioning$]
 };
 
+const atbMode$ = fromEvent(atbModeEls, "click").pipe(
+  pluck("target", "dataset", "mode"),
+  startWith(state.settings.atbMode)
+);
+
 const clock$ = interval(0, animationFrameScheduler).pipe(
   withLatestFrom(paused$),
   // Don't emit if the game is paused
@@ -118,19 +126,23 @@ const clock$ = interval(0, animationFrameScheduler).pipe(
   share()
 );
 
+const timerClock$ = clock$.pipe(
+  withLatestFrom(atbMode$, (_, mode) => mode),
+  switchMap(mode => combineLatest(atbMap[mode])),
+  map(thingsToWaitOn => !thingsToWaitOn.some(m => m)),
+  share()
+);
+
 // Don't recognize clicks if we're paused
 const clicks$ = fromEvent(document, "click").pipe(
   withLatestFrom(paused$),
   filter(([_, paused]) => !paused),
-  map(([event, _]) => event.target)
+  map(([event, _]) => event.target),
+  share()
 );
 
 const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
-const atbMode$ = fromEvent(atbModeEls, "click").pipe(
-  pluck("target", "dataset", "mode"),
-  startWith(state.settings.atbMode)
-);
 
 const characterHasNotChanged$ = currentHero$.pipe(mapTo(false));
 const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
@@ -144,7 +156,7 @@ const menuLinkClicks$ = clicks$.pipe(
   filter(el => hasClass(el, "menu-link")),
   pluck("dataset", "menuName")
 );
-const menuLevels$ = merge(menuLinkClicks$, characterHasNotChanged$, secondaryMenuBackClicks$);
+const menuLevels$ = merge(menuLinkClicks$, secondaryMenuBackClicks$);
 const magicMenu$ = menuLevels$.pipe(filter(menu => menu === "magic"));
 const itemMenu$ = menuLevels$.pipe(filter(menu => menu === "item"));
 const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
@@ -153,20 +165,6 @@ const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
 const sinkClicks$ = clicks$.pipe(filter(el => hasClass(el, "sinkable")));
 const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
-
-const timerClock$ = clock$.pipe(
-  withLatestFrom(atbMode$, (_, mode) => mode),
-  switchMap(mode => combineLatest(atbMap[mode])),
-  map(thingsToWaitOn => !thingsToWaitOn.some(m => m)),
-  share()
-);
-
-const timers$ = state.heroes.map(hero => {
-  return timerClock$.pipe(
-    map(ticking => (ticking ? 0.15 : 0)),
-    map(increase => Math.min(hero.wait + increase, 100))
-  );
-});
 
 const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
 
@@ -213,23 +211,8 @@ currentHeroClock$.subscribe(hero => {
       setSelectable(row);
     }
   });
-});
 
-state.heroes.forEach((_, i) => {
-  const nameEl = heroNameEls[i];
-  const spriteEl = heroSpriteEls[i];
-  const hero = state.heroes[i];
-  const timer$ = timers$[i];
-  return getClicksForElements$([nameEl, spriteEl])
-    .pipe(
-      withLatestFrom(timer$),
-      filter(([_, timer]) => timer === 100),
-      map(([event, _]) => event),
-      withLatestFrom(action$),
-      filter(([_, action]) => !action),
-      map(([event, _]) => event)
-    )
-    .subscribe(() => currentHero$.next(hero));
+  if (hero.hp <= 0) currentHero$.next(null);
 });
 
 currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
@@ -276,7 +259,8 @@ actionUnselected$.subscribe(() => {
 
 const attack$ = actionSelected$.pipe(
   filter(({ action }) => action === "attack"),
-  waitForSinkClickOperator
+  waitForSinkClickOperator,
+  filter(({ sink }) => sink.hp > 0)
 );
 
 const magic$ = actionSelected$.pipe(
@@ -297,14 +281,12 @@ attack$.subscribe(({ source, sink }) => {
 
 magic$.subscribe(({ source, sink, el }) => {
   const magicData = source.magic[el.dataset.index];
-  useMagic(source, sink, magicData);
-  completeAction();
+  if (useMagic(source, sink, magicData)) completeAction();
 });
 
 item$.subscribe(({ source, sink, el }) => {
   const itemData = source.items[el.dataset.index];
-  useItem(source, sink, itemData);
-  completeAction();
+  if (useItem(source, sink, itemData)) completeAction();
 });
 
 state.heroes.forEach((hero, i) => {
@@ -320,14 +302,48 @@ state.heroes.forEach((hero, i) => {
     updateIfDifferent(hpEls[i], `${Math.round(val)} / ${state.heroes[i].maxHp}`);
   });
 
-  // Check if hero is dead
-  // const nameEl = heroNameEls[i];
+  const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
   const deadOperator = getCharacterIsDeadOperator(hero);
   const aliveOperator = getCharacterIsAliveOperator(hero);
 
+  // Animate dead animations
   clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(spriteEl));
   clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(spriteEl));
+
+  const heroAliveTimer$ = timerClock$.pipe(
+    aliveOperator,
+    map(ticking => (ticking ? 0.15 : 0)),
+    map(increase => Math.min(hero.wait + increase, 100))
+  );
+
+  const heroDeadTimer$ = clockAfterAnimations$.pipe(deadOperator, mapTo(0));
+  const heroTimer$ = merge(heroAliveTimer$, heroDeadTimer$);
+
+  const heroReady$ = heroTimer$.pipe(map(time => time === 100));
+
+  heroTimer$.subscribe(time => (hero.wait = time));
+  heroReady$.pipe(filter(r => r)).subscribe(() => setHeroReady(i));
+  heroReady$.pipe(filter(r => !r)).subscribe(() => unsetHeroReady(i));
+  heroDeadTimer$.subscribe(() => unsetHeroReady(i));
+
+  // Get hero clicks
+  const heroClicks$ = getClicksForElements$([nameEl, spriteEl]).pipe(
+    withLatestFrom(heroReady$),
+    filter(
+      ([_, ready]) => ready,
+      ([el]) => el
+    ),
+    withLatestFrom(action$),
+    filter(
+      ([_, action]) => !action,
+      ([el]) => el
+    )
+  );
+
+  heroClicks$.subscribe(() => currentHero$.next(hero));
+
+  setScale(hero.el, -1, 1);
 });
 
 // Check if characters are dead
@@ -339,20 +355,13 @@ state.enemies.forEach((enemy, i) => {
   clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(spriteEl));
 });
 
-timers$.forEach((timer$, i) => {
-  const hero = state.heroes[i];
-  timer$.subscribe(time => (hero.wait = time));
-  timer$.pipe(filter(time => time === 100)).subscribe(() => setHeroReady(i));
-  timer$.pipe(filter(time => time < 100)).subscribe(() => unsetHeroReady(i));
-});
-
 function waitForSinkClickOperator(input$) {
   return input$.pipe(
     switchMap(({ source, el }) =>
       sinkClicks$.pipe(
         takeUntil(actionUnselected$),
-        take(1),
-        map(sinkEl => ({ source, sink: characterFromElement(sinkEl), el }))
+        map(sinkEl => characterFromElement(sinkEl)),
+        map(sink => ({ source, sink, el }))
       )
     )
   );
@@ -391,6 +400,11 @@ function getClicksForElements$(elements) {
 }
 
 function useItem(source, sink, data) {
+  if (sink.hp <= 0) {
+    console.log(`${sink.name} is toast so won't use item...`);
+    return false;
+  }
+
   console.log(`${source.name} items ${sink.name}...`);
   const item = source.items.find(item => (item.name = data.name));
   source.items.splice(source.items.indexOf(item), 1);
@@ -427,9 +441,16 @@ function useItem(source, sink, data) {
     square.remove();
     animatingCount$.next(-1);
   });
+
+  return true;
 }
 
 function useMagic(source, sink, data) {
+  if (sink.hp <= 0) {
+    console.log(`${sink.name} is toast so won't use magic...`);
+    return false;
+  }
+
   console.log(`${source.name} magics ${sink.name}...`);
   const hpDrain = sink.hp - data.damage;
   updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
@@ -454,6 +475,8 @@ function useMagic(source, sink, data) {
     ball.remove();
     animatingCount$.next(-1);
   });
+
+  return true;
 }
 
 function attack(source, sink, damage) {

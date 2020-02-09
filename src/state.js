@@ -19,7 +19,7 @@ const hero1 = {
   attack: 200,
   maxHp: 1500,
   maxMp: 100,
-  hp: 1250,
+  hp: 2,
   mp: 25,
   wait: 100,
   magic: magic1,
