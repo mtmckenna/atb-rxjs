@@ -1,8 +1,5 @@
-// Add item animation
 // Enemies attack
 // Can win
-// better zipping in of boxes
-// bug where mp doesn't go all the way up
 
 import {
   concat,
@@ -53,7 +50,6 @@ import {
 
 import {
   setTranslate,
-  unsetTranslate,
   highlightHero,
   setHeroReady,
   unsetHeroReady,
@@ -86,7 +82,10 @@ import {
   setWidth,
   showItemMenu,
   hideItemMenu,
-  fillItemMenu
+  fillItemMenu,
+  generateItemSquare,
+  setRotate,
+  setSelectable
 } from "./stylers";
 
 import { characterFromElement, getElementPosition, hasClass } from "./helpers";
@@ -164,10 +163,12 @@ const timerClock$ = clock$.pipe(
 
 const timers$ = state.heroes.map(hero => {
   return timerClock$.pipe(
-    map(ticking => (ticking ? 0.3 : 0)),
+    map(ticking => (ticking ? 0.15 : 0)),
     map(increase => Math.min(hero.wait + increase, 100))
   );
 });
+
+const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
 
 resize$.subscribe(resize);
 
@@ -201,6 +202,19 @@ atbMode$.subscribe(mode => {
   unsetShrink(pauseEl);
 });
 
+currentHeroClock$.subscribe(hero => {
+  if (!hero) return;
+  const index = state.heroes.indexOf(hero);
+  const magicMenu = magicMenuEls[index];
+  getAvailableActions(magicMenu).forEach(row => {
+    if (hero.magic[row.dataset.index].mpDrain > hero.mp) {
+      unsetSelectable(row);
+    } else {
+      setSelectable(row);
+    }
+  });
+});
+
 state.heroes.forEach((_, i) => {
   const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
@@ -225,12 +239,6 @@ currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   const itemcMenu = itemMenuEls[index];
   fillMagicMenu(magicMenu, magic);
   fillItemMenu(itemcMenu, items);
-  // Can't use magic that requires more MP than you have
-  getAvailableActions(magicMenu).forEach(row => {
-    if (hero.magic[row.dataset.index].mpDrain > hero.mp) {
-      unsetSelectable(row);
-    }
-  });
   highlightHero(index);
   showSecondaryMenu(index);
 });
@@ -303,13 +311,13 @@ state.heroes.forEach((hero, i) => {
   // Update mp display
   const incrementHpValue = getIncrementTowardsValueOperator(hero, "mp", "maxMp");
   clock$.pipe(incrementHpValue).subscribe(val => {
-    updateIfDifferent(mpEls[i], `${parseInt(val)}`);
+    updateIfDifferent(mpEls[i], `${Math.round(val)}`);
   });
 
   // Update hp display
   const incrementMpValue = getIncrementTowardsValueOperator(hero, "hp", "maxHp");
   clock$.pipe(incrementMpValue).subscribe(val => {
-    updateIfDifferent(hpEls[i], `${parseInt(val)} / ${state.heroes[i].maxHp}`);
+    updateIfDifferent(hpEls[i], `${Math.round(val)} / ${state.heroes[i].maxHp}`);
   });
 
   // Check if hero is dead
@@ -324,7 +332,6 @@ state.heroes.forEach((hero, i) => {
 
 // Check if characters are dead
 state.enemies.forEach((enemy, i) => {
-  // Check if enemy is dead
   const spriteEl = enemySpriteEls[i];
   const deadOperator = getCharacterIsDeadOperator(enemy);
   const aliveOperator = getCharacterIsAliveOperator(enemy);
@@ -387,7 +394,39 @@ function useItem(source, sink, data) {
   console.log(`${source.name} items ${sink.name}...`);
   const item = source.items.find(item => (item.name = data.name));
   source.items.splice(source.items.indexOf(item), 1);
-  data.effect(sink);
+
+  unhighlightEnemies();
+  hideSecondaryMenus();
+
+  const square = generateItemSquare();
+  const squarePos = getElementPosition(square);
+  const sourcePos = getElementPosition(source.el);
+  const sinkPos = getElementPosition(sink.el);
+  const startX = sourcePos.left + sourcePos.width / 2 - squarePos.width / 2;
+  const startY = sourcePos.top + sourcePos.height / 2 - squarePos.height / 2;
+  const endX = sinkPos.left + sinkPos.width / 2 - squarePos.width / 2;
+  const endY = sinkPos.top + sinkPos.height / 2 - squarePos.height / 2;
+  const translateX = endX - startX;
+  const translateY = endY - startY;
+
+  moveLeft(square, startX);
+  moveTop(square, startY);
+
+  // Animate square
+  const fadeIn$ = getTransitionEnd$(square, "opacity", () => setOpacity(square, 1.0));
+  const rotate$ = getTransitionEnd$(square, "transform", () => setRotate(square, 45));
+  const toSink$ = getTransitionEnd$(square, "transform", () =>
+    setTranslate(square, translateX, translateY)
+  );
+  const unrotate$ = getTransitionEnd$(square, "transform", () => setRotate(square, 0));
+  const fadeOut$ = getTransitionEnd$(square, "opacity", () => unsetOpacity(square));
+  const animation$ = concat(fadeIn$, rotate$, toSink$, unrotate$, fadeOut$);
+  animatingCount$.next(1);
+  animation$.subscribe(null, null, () => {
+    data.effect(sink);
+    square.remove();
+    animatingCount$.next(-1);
+  });
 }
 
 function useMagic(source, sink, data) {
@@ -412,7 +451,6 @@ function useMagic(source, sink, data) {
   const animation$ = concat(fadeIn$, toSink$, fadeOut$);
   animatingCount$.next(1);
   animation$.subscribe(null, null, () => {
-    animateHpDrainText(sink, data.damage);
     ball.remove();
     animatingCount$.next(-1);
   });
@@ -430,7 +468,7 @@ function attack(source, sink, damage) {
   const y = sinkPos.top - sourcePos.top;
 
   const toSink$ = getTransitionEnd$(source.el, "transform", () => setTranslate(source.el, x, y));
-  const fromSink$ = getTransitionEnd$(source.el, "transform", () => unsetTranslate(source.el));
+  const fromSink$ = getTransitionEnd$(source.el, "transform", () => setTranslate(source.el, 0, 0));
   const animation$ = concat(toSink$, fromSink$);
   animatingCount$.next(1);
   animation$.subscribe(null, null, () => {

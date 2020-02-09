@@ -87,9 +87,7 @@ state.heroes.forEach((_, i) => {
   const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
   const hero = state.heroes[i];
-  [nameEl, spriteEl].forEach(el =>
-    el.addEventListener("click", () => selectHero(hero))
-  );
+  [nameEl, spriteEl].forEach(el => el.addEventListener("click", () => selectHero(hero)));
 });
 
 function performAction(el) {
@@ -153,15 +151,12 @@ function attack(source, sink) {
     if (event.propertyName !== "transform") return;
     const updatedPos = getElementPosition(source.el);
 
-    if (
-      updatedPos.left === sourcePos.left &&
-      updatedPos.top === sourcePos.top
-    ) {
+    if (updatedPos.left === sourcePos.left && updatedPos.top === sourcePos.top) {
       source.el.removeEventListener("transitionend", translateCallback);
       return;
     }
 
-    unsetTranslate(source.el);
+    setTranslate(source.el, 0, 0);
   }
 }
 
@@ -196,9 +191,7 @@ function draw() {
     updateIfDifferent(el, `${state.heroes[i].hp} / ${state.heroes[i].maxHp}`)
   );
   mpEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].mp}`));
-  heroNameEls.forEach((el, i) =>
-    updateIfDifferent(el, `${state.heroes[i].name}`)
-  );
+  heroNameEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
   updateIfDifferent(selectedAtbEl, state.settings.atbMode);
 }
 

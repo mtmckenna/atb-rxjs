@@ -9,8 +9,8 @@ const magic2 = [{ name: "Fire", damage: 40, mpDrain: 35, color: "red" }];
 
 const magic3 = [{ name: "Restore", damage: -20, mpDrain: 20, color: "green" }];
 
-const potion = { name: "Potion", effect: c => (c.hp = Math.min(c.maxHp, c.hp + 25)) };
-const ether = { name: "Ether", effect: c => (c.mp = Math.min(c.maxMp, c.mp + 25)) };
+const potion = { name: "Potion", effect: c => (c.hp = Math.min(c.maxHp, c.hp + 150)) };
+const ether = { name: "Ether", effect: c => (c.mp = Math.min(c.maxMp, c.mp + 100)) };
 
 const hero1 = {
   name: "Wizard",

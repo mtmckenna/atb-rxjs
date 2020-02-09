@@ -10,45 +10,10 @@ import {
   groundEl,
   spriteWrapperEls,
   backgroundEl,
-  secondaryMenuEls,
   getAvailableActions
 } from "./elements";
 
 import { hasClass } from "./helpers";
-
-function setStyle(propName, formattingFunction = v => v) {
-  return function(el) {
-    const args = Array.from(arguments).slice(1, arguments.length);
-    const formatttedValue = formattingFunction(...args);
-    if (el.style[propName] !== formatttedValue) {
-      el.style[propName] = formatttedValue;
-    }
-  };
-}
-
-function unsetStyle(propName) {
-  return function(el) {
-    if (!!el.style[propName]) {
-      el.style[propName] = null;
-    }
-  };
-}
-
-function setClass(className) {
-  return function(el) {
-    if (!hasClass(el, className)) {
-      el.classList.add(className);
-    }
-  };
-}
-
-function unsetClass(className) {
-  return function(el) {
-    if (hasClass(el, className)) {
-      el.classList.remove(className);
-    }
-  };
-}
 
 const setReady = setClass("ready");
 const unsetReady = unsetClass("ready");
@@ -81,8 +46,15 @@ const setMagicBallBackground = setStyle(
   v => `radial-gradient(${v} 0%, rgba(0, 0, 0, 0) 50%)`
 );
 
-const setTranslate = setStyle("transform", (left, top) => `translate(${left}px, ${top}px)`);
-const unsetTranslate = unsetStyle("transform");
+const translateFormatter = combineTransformFunction(
+  "translate",
+  (left, top) => `translate(${left}px, ${top}px)`
+);
+
+const rotateFormatter = combineTransformFunction("rotate", degrees => `rotate(${degrees}deg)`);
+
+const setTranslate = setStyle("transform", translateFormatter);
+const setRotate = setStyle("transform", rotateFormatter);
 const updateWaitWidth = setStyle("width", v => `${v}%`);
 const moveTop = setStyle("top", v => `${v}px`);
 const moveLeft = setStyle("left", v => `${v}px`);
@@ -91,6 +63,70 @@ const setWidth = setStyle("width", v => `${v}px`);
 const setBackgroundImage = setStyle("backgroundImage");
 const setOpacity = setStyle("opacity");
 const unsetOpacity = unsetStyle("opacity");
+
+function combineTransformFunction(transformProp, formattingFunction) {
+  return function() {
+    const el = arguments[arguments.length - 1];
+    const transform = el.style.transform;
+    // Extract scale, rotate, translate from transform style
+    const props = transform.split(/([a-zA-Z]*\(.*?\))/).filter(p => p.length > 1);
+    const updatedProps = [];
+
+    // remove prop for list if it already exists
+    const existingProp = props.find(p => p.includes(transformProp));
+    if (existingProp) props.splice(props.indexOf(existingProp), 1);
+
+    // can remove prop from transform by omitting formatting function
+    if (formattingFunction) props.push(formattingFunction(...arguments));
+
+    const scale = props.find(p => p.includes("scale"));
+    const rotate = props.find(p => p.includes("rotate"));
+    const translate = props.find(p => p.includes("translate"));
+
+    // Order transforms
+    if (translate) updatedProps.push(translate);
+    if (scale) updatedProps.push(scale);
+    if (rotate) updatedProps.push(rotate);
+
+    return updatedProps.join(" ");
+  };
+}
+
+function setStyle(propName, formattingFunction = v => v) {
+  return function(el) {
+    const args = Array.from(arguments).slice(1, arguments.length);
+    args.push(el);
+    const formattedValue = formattingFunction(...args);
+
+    if (el.style[propName] !== formattedValue) {
+      el.style[propName] = formattedValue;
+    }
+  };
+}
+
+function unsetStyle(propName) {
+  return function(el) {
+    if (!!el.style[propName]) {
+      el.style[propName] = null;
+    }
+  };
+}
+
+function setClass(className) {
+  return function(el) {
+    if (!hasClass(el, className)) {
+      el.classList.add(className);
+    }
+  };
+}
+
+function unsetClass(className) {
+  return function(el) {
+    if (hasClass(el, className)) {
+      el.classList.remove(className);
+    }
+  };
+}
 
 function setAllCharactersAsSinkable() {
   const els = [heroNameEls, heroSpriteEls, enemySpriteEls].flat();
@@ -267,6 +303,14 @@ function generateMagicBall(color) {
   return ball;
 }
 
+function generateItemSquare() {
+  const square = document.createElement("div");
+  square.classList.add("item-square");
+  battleEl.appendChild(square);
+
+  return square;
+}
+
 function generateHpDrainText(drain) {
   const text = document.createElement("div");
   text.classList.add("hp-drain");
@@ -287,7 +331,6 @@ export {
   fillItemMenu,
   clearRows,
   setTranslate,
-  unsetTranslate,
   highlightHeroes,
   unhighlightHero,
   unhighlightHeroes,
@@ -329,5 +372,7 @@ export {
   hideItemMenu,
   setMagicBallBackground,
   selectAction,
-  generateHpDrainText
+  generateHpDrainText,
+  generateItemSquare,
+  setRotate
 };
