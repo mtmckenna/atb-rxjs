@@ -136,9 +136,7 @@ const clicks$ = fromEvent(document, "click").pipe(
 
 const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
-
 const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
-
 const notAnimatingOperator = getFilterWithLatestFromOperator(animating$, v => !v);
 
 // Tick only when animations are done
@@ -157,7 +155,6 @@ const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
 const sinkClicks$ = clicks$.pipe(filter(el => hasClass(el, "sinkable")));
 const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
-
 const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
 
 resize$.subscribe(resize);
@@ -260,12 +257,14 @@ const attack$ = actionSelected$.pipe(
 
 const magic$ = actionSelected$.pipe(
   filter(({ action }) => action === "magic"),
-  waitForSinkClickOperator
+  waitForSinkClickOperator,
+  filter(({ sink }) => sink.hp > 0)
 );
 
 const item$ = actionSelected$.pipe(
   filter(({ action }) => action === "item"),
-  waitForSinkClickOperator
+  waitForSinkClickOperator,
+  filter(({ sink }) => sink.hp > 0)
 );
 
 attack$.subscribe(({ source, sink }) => {
@@ -276,12 +275,14 @@ attack$.subscribe(({ source, sink }) => {
 
 magic$.subscribe(({ source, sink, el }) => {
   const magicData = source.magic[el.dataset.index];
-  if (useMagic(source, sink, magicData)) completeAction();
+  useMagic(source, sink, magicData);
+  completeAction();
 });
 
 item$.subscribe(({ source, sink, el }) => {
   const itemData = source.items[el.dataset.index];
-  if (useItem(source, sink, itemData)) completeAction();
+  useItem(source, sink, itemData);
+  completeAction();
 });
 
 state.heroes.forEach((hero, i) => {
@@ -408,14 +409,8 @@ function getClicksForElements$(elements) {
 }
 
 function useItem(source, sink, data) {
-  if (sink.hp <= 0) {
-    console.log(`${sink.name} is toast so won't use item...`);
-    return false;
-  }
-
-  source.wait = 0;
-
   console.log(`${source.name} items ${sink.name}...`);
+  updateCharacterStats(source, 0, source.hp, source.mp);
   const item = source.items.find(item => (item.name = data.name));
   source.items.splice(source.items.indexOf(item), 1);
 
@@ -451,16 +446,9 @@ function useItem(source, sink, data) {
     square.remove();
     animatingCount$.next(-1);
   });
-
-  return true;
 }
 
 function useMagic(source, sink, data) {
-  if (sink.hp <= 0) {
-    console.log(`${sink.name} is toast so won't use magic...`);
-    return false;
-  }
-
   console.log(`${source.name} magics ${sink.name}...`);
   const hpDrain = sink.hp - data.damage;
   source.wait = 0;
@@ -483,11 +471,10 @@ function useMagic(source, sink, data) {
   const animation$ = concat(fadeIn$, toSink$, fadeOut$);
   animatingCount$.next(1);
   animation$.subscribe(null, null, () => {
+    animateHpDrainText(sink, data.damage);
     ball.remove();
     animatingCount$.next(-1);
   });
-
-  return true;
 }
 
 function attack(source, sink, damage) {
