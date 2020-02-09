@@ -86,7 +86,7 @@ const enemy3 = {
   items: [potion, potion]
 };
 
-const settings = { atbMode: "Active" };
+const settings = { atbMode: "Recommended" };
 
 const state = {
   heroes: [hero1, hero2, hero3],

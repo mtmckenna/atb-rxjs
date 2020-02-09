@@ -1,6 +1,5 @@
 // Enemies attack
 // Can win
-// filterWithLatestFRom
 
 import {
   concat,
@@ -116,13 +115,10 @@ const atbMode$ = fromEvent(atbModeEls, "click").pipe(
   startWith(state.settings.atbMode)
 );
 
-const clock$ = interval(0, animationFrameScheduler).pipe(
-  withLatestFrom(paused$),
-  // Don't emit if the game is paused
-  filter(([_, paused]) => !paused),
-  map(([clock, _]) => clock),
-  share()
-);
+const notPausedOperator = getFilterWithLatestFromOperator(paused$, v => !v);
+
+// Don't tick if pasued
+const clock$ = interval(0, animationFrameScheduler).pipe(notPausedOperator, share());
 
 const timerClock$ = clock$.pipe(
   withLatestFrom(atbMode$, (_, mode) => mode),
@@ -133,8 +129,7 @@ const timerClock$ = clock$.pipe(
 
 // Don't recognize clicks if we're paused
 const clicks$ = fromEvent(document, "click").pipe(
-  withLatestFrom(paused$),
-  filter(([_, paused]) => !paused),
+  notPausedOperator,
   map(([event, _]) => event.target),
   share()
 );
@@ -144,10 +139,10 @@ const pauseClick$ = fromEvent(pauseEl, "click");
 
 const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
 
-const clockAfterAnimations$ = clock$.pipe(
-  withLatestFrom(animating$, (_, animating) => animating),
-  filter(animating => !animating)
-);
+const notAnimatingOperator = getFilterWithLatestFromOperator(animating$, v => !v);
+
+// Tick only when animations are done
+const clockAfterAnimations$ = clock$.pipe(notAnimatingOperator);
 const heroMenuBackClicks$ = getClicksForElements$(heroMenuBackEls);
 const menuLinkClicks$ = clicks$.pipe(
   filter(el => hasClass(el, "menu-link")),
@@ -333,18 +328,13 @@ state.heroes.forEach((hero, i) => {
   heroReady$.pipe(filter(r => !r)).subscribe(() => unsetHeroReady(i));
   heroDeadTimer$.subscribe(() => unsetHeroReady(i));
 
+  const heroReadyOperator = getFilterWithLatestFromOperator(heroReady$, v => v);
+  const noActionOperator = getFilterWithLatestFromOperator(action$, v => !v);
+
   // Get hero clicks
   const heroClicks$ = getClicksForElements$([nameEl, spriteEl]).pipe(
-    withLatestFrom(heroReady$),
-    filter(
-      ([_, ready]) => ready,
-      ([el]) => el
-    ),
-    withLatestFrom(action$),
-    filter(
-      ([_, action]) => !action,
-      ([el]) => el
-    )
+    heroReadyOperator,
+    noActionOperator
   );
 
   heroClicks$.subscribe(() => currentHero$.next(hero));
@@ -360,6 +350,18 @@ state.enemies.forEach((enemy, i) => {
   clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(spriteEl));
   clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(spriteEl));
 });
+
+function getFilterWithLatestFromOperator(stream$, conditionFunction) {
+  return function(input$) {
+    return input$.pipe(
+      withLatestFrom(stream$),
+      filter(
+        ([_, value]) => conditionFunction(value),
+        ([s]) => s
+      )
+    );
+  };
+}
 
 function waitForSinkClickOperator(input$) {
   return input$.pipe(
