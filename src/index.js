@@ -1,6 +1,5 @@
 // Enemies attack
 // Can win
-// remove draw function
 // filterWithLatestFRom
 
 import {
@@ -27,7 +26,6 @@ import {
   withLatestFrom,
   startWith,
   tap,
-  take,
   mapTo
 } from "rxjs/operators";
 
@@ -144,7 +142,6 @@ const clicks$ = fromEvent(document, "click").pipe(
 const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
 
-const characterHasNotChanged$ = currentHero$.pipe(mapTo(false));
 const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
 
 const clockAfterAnimations$ = clock$.pipe(
@@ -199,6 +196,8 @@ atbMode$.subscribe(mode => {
   setShrink(unpauseEl);
   unsetShrink(pauseEl);
 });
+
+clock$.subscribe(() => updateIfDifferent(selectedAtbEl, state.settings.atbMode));
 
 currentHeroClock$.subscribe(hero => {
   if (!hero) return;
@@ -260,7 +259,8 @@ actionUnselected$.subscribe(() => {
 const attack$ = actionSelected$.pipe(
   filter(({ action }) => action === "attack"),
   waitForSinkClickOperator,
-  filter(({ sink }) => sink.hp > 0)
+  filter(({ sink }) => sink.hp > 0),
+  filter(({ source, sink }) => source !== sink)
 );
 
 const magic$ = actionSelected$.pipe(
@@ -302,6 +302,13 @@ state.heroes.forEach((hero, i) => {
     updateIfDifferent(hpEls[i], `${Math.round(val)} / ${state.heroes[i].maxHp}`);
   });
 
+  // Update timer display
+  const waitEl = waitFillingEls[i];
+  clock$.subscribe(() => updateWaitWidth(waitEl, hero.wait));
+
+  // Update name
+  updateIfDifferent(heroNameEls[i], `${hero.name}`);
+
   const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
   const deadOperator = getCharacterIsDeadOperator(hero);
@@ -319,7 +326,6 @@ state.heroes.forEach((hero, i) => {
 
   const heroDeadTimer$ = clockAfterAnimations$.pipe(deadOperator, mapTo(0));
   const heroTimer$ = merge(heroAliveTimer$, heroDeadTimer$);
-
   const heroReady$ = heroTimer$.pipe(map(time => time === 100));
 
   heroTimer$.subscribe(time => (hero.wait = time));
@@ -405,6 +411,8 @@ function useItem(source, sink, data) {
     return false;
   }
 
+  source.wait = 0;
+
   console.log(`${source.name} items ${sink.name}...`);
   const item = source.items.find(item => (item.name = data.name));
   source.items.splice(source.items.indexOf(item), 1);
@@ -453,6 +461,7 @@ function useMagic(source, sink, data) {
 
   console.log(`${source.name} magics ${sink.name}...`);
   const hpDrain = sink.hp - data.damage;
+  source.wait = 0;
   updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
   updateCharacterStats(sink, sink.wait, hpDrain, sink.mp);
   unhighlightEnemies();
@@ -533,14 +542,5 @@ function getTransitionEnd$(el, property, transform) {
   });
 }
 
-function draw() {
-  requestAnimationFrame(draw);
-  waitFillingEls.forEach((el, i) => updateWaitWidth(el, state.heroes[i].wait));
-  heroNameEls.forEach((el, i) => updateIfDifferent(el, `${state.heroes[i].name}`));
-  updateIfDifferent(selectedAtbEl, state.settings.atbMode);
-}
-
 setOpacity(document.body, 1.0);
-
-requestAnimationFrame(draw);
 resize();

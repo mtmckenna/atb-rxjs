@@ -187,7 +187,7 @@ function unhighlightEnemies() {
 function setHeroReady(heroIndex) {
   const heroName = heroNameEls[heroIndex];
   const heroSprite = heroSpriteEls[heroIndex];
-  [(heroName, heroSprite)].forEach(el => {
+  [heroName, heroSprite].forEach(el => {
     setSelectable(el);
     setReady(el);
   });
