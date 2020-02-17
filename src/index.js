@@ -1,5 +1,6 @@
 // pause animations
 // Enemies attack
+// rename wait
 
 import {
   concat,
@@ -141,6 +142,7 @@ const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
 const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
 const notAnimatingOperator = getFilterWithLatestFromOperator(animating$, v => !v);
+const noActionOperator = getFilterWithLatestFromOperator(action$, v => !v);
 
 // Tick only when animations are done
 const clockAfterAnimations$ = clock$.pipe(notAnimatingOperator);
@@ -298,6 +300,20 @@ victory$.subscribe(() => {
 });
 
 state.heroes.forEach((hero, i) => {
+  const nameEl = heroNameEls[i];
+  const spriteEl = heroSpriteEls[i];
+  const deadOperator = getCharacterIsDeadOperator(hero);
+  const heroTimer$ = configureCharacterTimer(hero);
+  const heroDead$ = heroTimer$.pipe(deadOperator);
+  const heroReady$ = heroTimer$.pipe(map(time => time === 100));
+  const heroReadyOperator = getFilterWithLatestFromOperator(heroReady$, v => v);
+  const heroClicks$ = getClicksForElements$([nameEl, spriteEl]).pipe(
+    heroReadyOperator,
+    noActionOperator
+  );
+
+  configureDeathAnimations(hero);
+
   // Update mp display
   const incrementHpValue = getIncrementTowardsValueOperator(hero, "mp", "maxMp");
   clock$.pipe(incrementHpValue).subscribe(val => {
@@ -311,58 +327,48 @@ state.heroes.forEach((hero, i) => {
   });
 
   // Update timer display
-  const waitEl = waitFillingEls[i];
-  clock$.subscribe(() => updateWaitWidth(waitEl, hero.wait));
+  clock$.subscribe(() => updateWaitWidth(waitFillingEls[i], hero.wait));
 
   // Update name
   updateIfDifferent(heroNameEls[i], `${hero.name}`);
 
-  const nameEl = heroNameEls[i];
-  const spriteEl = heroSpriteEls[i];
-  const deadOperator = getCharacterIsDeadOperator(hero);
-  const aliveOperator = getCharacterIsAliveOperator(hero);
+  // Make hero look to the left
+  setScale(hero.el, -1, 1);
 
-  // Animate dead animations
-  clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(spriteEl));
-  clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(spriteEl));
-
-  const heroAliveTimer$ = timerClock$.pipe(
-    aliveOperator,
-    map(ticking => (ticking ? 0.15 : 0)),
-    map(increase => Math.min(hero.wait + increase, 100))
-  );
-
-  const heroDeadTimer$ = clockAfterAnimations$.pipe(deadOperator, mapTo(0));
-  const heroTimer$ = merge(heroAliveTimer$, heroDeadTimer$);
-  const heroReady$ = heroTimer$.pipe(map(time => time === 100));
-
-  heroTimer$.subscribe(time => (hero.wait = time));
   heroReady$.pipe(filter(r => r)).subscribe(() => setHeroReady(i));
   heroReady$.pipe(filter(r => !r)).subscribe(() => unsetHeroReady(i));
-  heroDeadTimer$.subscribe(() => unsetHeroReady(i));
-
-  const heroReadyOperator = getFilterWithLatestFromOperator(heroReady$, v => v);
-  const noActionOperator = getFilterWithLatestFromOperator(action$, v => !v);
-
-  // Get hero clicks
-  const heroClicks$ = getClicksForElements$([nameEl, spriteEl]).pipe(
-    heroReadyOperator,
-    noActionOperator
-  );
-
+  heroDead$.subscribe(() => unsetHeroReady(i));
   heroClicks$.subscribe(() => currentHero$.next(hero));
-
-  setScale(hero.el, -1, 1);
 });
 
 // Check if characters are dead
-state.enemies.forEach((enemy, i) => {
-  const spriteEl = enemySpriteEls[i];
-  const deadOperator = getCharacterIsDeadOperator(enemy);
-  const aliveOperator = getCharacterIsAliveOperator(enemy);
-  clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(spriteEl));
-  clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(spriteEl));
-});
+state.enemies.forEach(enemy => configureDeathAnimations(enemy));
+
+function configureDeathAnimations(character) {
+  const deadOperator = getCharacterIsDeadOperator(character);
+  const aliveOperator = getCharacterIsAliveOperator(character);
+
+  // Animate dead animations
+  clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(character.el));
+  clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(character.el));
+}
+
+function configureCharacterTimer(character) {
+  const deadOperator = getCharacterIsDeadOperator(character);
+  const aliveOperator = getCharacterIsAliveOperator(character);
+
+  const aliveTimer$ = timerClock$.pipe(
+    aliveOperator,
+    map(ticking => (ticking ? 0.15 : 0)),
+    map(increase => Math.min(character.wait + increase, 100))
+  );
+
+  const deadTimer$ = clockAfterAnimations$.pipe(deadOperator, mapTo(0));
+  const timer$ = merge(aliveTimer$, deadTimer$);
+
+  timer$.subscribe(time => (character.wait = time));
+  return timer$;
+}
 
 function getFilterWithLatestFromOperator(stream$, conditionFunction) {
   return function(input$) {
