@@ -55,7 +55,7 @@ const hero3 = {
 const enemy1 = {
   name: "Deathknight",
   el: enemySpriteEls[0],
-  attack: 100,
+  attack: 40,
   maxHp: 1500,
   hp: 10,
   mp: 75,
@@ -66,7 +66,7 @@ const enemy1 = {
 const enemy2 = {
   name: "Goblin",
   el: enemySpriteEls[1],
-  attack: 200,
+  attack: 25,
   maxHp: 30,
   hp: 20,
   mp: 200,
@@ -77,7 +77,7 @@ const enemy2 = {
 const enemy3 = {
   name: "Skeleton",
   el: enemySpriteEls[2],
-  attack: 300,
+  attack: 50,
   maxHp: 250,
   hp: 20,
   mp: 120,

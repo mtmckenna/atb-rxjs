@@ -1,6 +1,8 @@
-// pause animations
-// Enemies attack
+// TODO:
+// enemies can do more than attack
 // rename wait
+// tween so can pause
+// rename heroready
 
 import {
   concat,
@@ -162,6 +164,7 @@ const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
 const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
 const victory$ = clockAfterAnimations$.pipe(filter(() => state.enemies.every(c => c.hp <= 0)));
+const defeat$ = clockAfterAnimations$.pipe(filter(() => state.heroes.every(c => c.hp <= 0)));
 
 resize$.subscribe(resize);
 
@@ -224,6 +227,7 @@ currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
 });
 
 currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
+  action$.next(null);
   unhighlightAllCharacters();
   hideSecondaryMenus();
 });
@@ -275,18 +279,24 @@ const item$ = actionSelected$.pipe(
 
 attack$.subscribe(({ source, sink }) => {
   const attackDamage = source.attack;
+  unhighlightEnemies();
+  hideSecondaryMenus();
   attack(source, sink, attackDamage);
   completeAction();
 });
 
 magic$.subscribe(({ source, sink, el }) => {
   const magicData = source.magic[el.dataset.index];
+  unhighlightEnemies();
+  hideSecondaryMenus();
   useMagic(source, sink, magicData);
   completeAction();
 });
 
 item$.subscribe(({ source, sink, el }) => {
   const itemData = source.items[el.dataset.index];
+  unhighlightEnemies();
+  hideSecondaryMenus();
   useItem(source, sink, itemData);
   completeAction();
 });
@@ -297,6 +307,12 @@ victory$.subscribe(() => {
   paused$.next(true);
   const heroes = state.heroes.filter(hero => hero.hp > 0);
   heroes.forEach(hero => setWon(hero.el));
+});
+
+defeat$.subscribe(() => {
+  setShrink(pauseEl);
+  unsetShrink(lostEl);
+  paused$.next(true);
 });
 
 state.heroes.forEach((hero, i) => {
@@ -322,7 +338,7 @@ state.heroes.forEach((hero, i) => {
 
   // Update hp display
   const incrementMpValue = getIncrementTowardsValueOperator(hero, "hp", "maxHp");
-  clock$.pipe(incrementMpValue).subscribe(val => {
+  clockAfterAnimations$.pipe(incrementMpValue).subscribe(val => {
     updateIfDifferent(hpEls[i], `${Math.round(val)} / ${state.heroes[i].maxHp}`);
   });
 
@@ -341,8 +357,24 @@ state.heroes.forEach((hero, i) => {
   heroClicks$.subscribe(() => currentHero$.next(hero));
 });
 
-// Check if characters are dead
-state.enemies.forEach(enemy => configureDeathAnimations(enemy));
+// Configure enemies
+state.enemies.forEach(enemy => {
+  configureDeathAnimations(enemy);
+  const timer$ = configureCharacterTimer(enemy);
+  const readyOperator = getFilterWithLatestFromOperator(timer$, time => time === 100);
+  const ready$ = timerClock$.pipe(readyOperator);
+  ready$.subscribe(() => {
+    const sink = getRandomElement(state.heroes.filter(hero => hero.hp > 0));
+
+    // Don't attack immediately after reaching 100% timer
+    const shouldAttack = Math.random() < 0.01;
+    if (sink && shouldAttack) attack(enemy, sink, enemy.attack);
+  });
+});
+
+function getRandomElement(array) {
+  return array[Math.floor(Math.random() * array.length)];
+}
 
 function configureDeathAnimations(character) {
   const deadOperator = getCharacterIsDeadOperator(character);
@@ -432,9 +464,6 @@ function useItem(source, sink, data) {
   const item = source.items.find(item => (item.name = data.name));
   source.items.splice(source.items.indexOf(item), 1);
 
-  unhighlightEnemies();
-  hideSecondaryMenus();
-
   const square = generateItemSquare();
   const squarePos = getElementPosition(square);
   const sourcePos = getElementPosition(source.el);
@@ -472,8 +501,6 @@ function useMagic(source, sink, data) {
   source.wait = 0;
   updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
   updateCharacterStats(sink, sink.wait, hpDrain, sink.mp);
-  unhighlightEnemies();
-  hideSecondaryMenus();
   const ball = generateMagicBall(data.color);
   const sourcePos = getElementPosition(source.el);
   const sinkPos = getElementPosition(sink.el);
@@ -499,8 +526,6 @@ function attack(source, sink, damage) {
   console.log(`${source.name} attacks ${sink.name}...`);
   source.wait = 0;
   sink.hp = Math.max(sink.hp - damage, 0);
-  unhighlightEnemies();
-  hideSecondaryMenus();
   const sourcePos = getElementPosition(source.el);
   const sinkPos = getElementPosition(sink.el);
   const x = sinkPos.left - sourcePos.left;
