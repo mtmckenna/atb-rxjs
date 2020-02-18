@@ -28,6 +28,7 @@ import {
   withLatestFrom,
   startWith,
   tap,
+  take,
   mapTo
 } from "rxjs/operators";
 
@@ -362,7 +363,7 @@ state.enemies.forEach(enemy => {
   configureDeathAnimations(enemy);
   const timer$ = configureCharacterTimer(enemy);
   const readyOperator = getFilterWithLatestFromOperator(timer$, time => time === 100);
-  const ready$ = timerClock$.pipe(readyOperator);
+  const ready$ = clockAfterAnimations$.pipe(readyOperator);
   ready$.subscribe(() => {
     const sink = getRandomElement(state.heroes.filter(hero => hero.hp > 0));
 
@@ -534,11 +535,24 @@ function attack(source, sink, damage) {
   const toSink$ = getTransitionEnd$(source.el, "transform", () => setTranslate(source.el, x, y));
   const fromSink$ = getTransitionEnd$(source.el, "transform", () => setTranslate(source.el, 0, 0));
   const animation$ = concat(toSink$, fromSink$);
-  animatingCount$.next(1);
-  animation$.subscribe(null, null, () => {
-    animateHpDrainText(sink, damage);
-    animatingCount$.next(-1);
-  });
+
+  animatingCount$
+    .pipe(
+      filter(c => c === 0),
+      take(1)
+    )
+    .subscribe(() => {
+      animatingCount$.next(1);
+      animation$.subscribe(null, null, () => {
+        animateHpDrainText(sink, damage);
+        animatingCount$.next(-1);
+      });
+    });
+  // animatingCount$.next(1);
+  // animation$.subscribe(null, null, () => {
+  //   animateHpDrainText(sink, damage);
+  //   animatingCount$.next(-1);
+  // });
 }
 
 function animateHpDrainText(character, drain) {

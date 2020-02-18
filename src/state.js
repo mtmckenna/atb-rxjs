@@ -59,7 +59,7 @@ const enemy1 = {
   maxHp: 1500,
   hp: 10,
   mp: 75,
-  wait: 0,
+  wait: 50,
   magic: magic1,
   items: [potion]
 };
@@ -70,7 +70,7 @@ const enemy2 = {
   maxHp: 30,
   hp: 20,
   mp: 200,
-  wait: 0,
+  wait: 50,
   magic: magic2,
   items: [ether]
 };
@@ -81,7 +81,7 @@ const enemy3 = {
   maxHp: 250,
   hp: 20,
   mp: 120,
-  wait: 90,
+  wait: 50,
   magic: magic3,
   items: [potion, potion]
 };
