@@ -1,6 +1,5 @@
 // TODO:
 // enemies can do more than attack
-// sort imports
 // look for unused import
 // waitForSinkClickOperator take1?
 // character shakes when hit
@@ -8,104 +7,104 @@
 import TWEEN from "@tweenjs/tween.js";
 
 import {
+  animationFrameScheduler,
+  combineLatest,
+  BehaviorSubject,
   concat,
+  defer,
+  EMPTY,
   fromEvent,
+  iif,
   interval,
   forkJoin,
   merge,
-  animationFrameScheduler,
-  BehaviorSubject,
   Observable,
-  combineLatest,
-  of,
-  defer,
-  iif,
-  EMPTY
+  of
 } from "rxjs";
 
 import {
+  delay,
   distinctUntilChanged,
   filter,
-  map,
-  pluck,
-  share,
-  switchMap,
-  scan,
-  takeUntil,
-  withLatestFrom,
-  startWith,
-  mapTo,
   finalize,
-  delay,
-  tap
+  map,
+  mapTo,
+  pluck,
+  scan,
+  share,
+  startWith,
+  switchMap,
+  takeUntil,
+  tap,
+  withLatestFrom
 } from "rxjs/operators";
 
 import {
-  waitFillingEls,
+  atbModeEls,
+  getAvailableActions,
   heroNameEls,
   hpEls,
-  mpEls,
   heroMenuEls,
   heroSpriteEls,
   heroMenuBackEls,
-  secondaryMenuBackEls,
-  pauseEl,
-  unpauseEl,
-  selectedAtbEl,
-  atbModeEls,
   itemMenuEls,
+  lostEl,
+  mpEls,
   magicMenuEls,
-  getAvailableActions,
-  wonEl,
-  lostEl
+  pauseEl,
+  secondaryMenuBackEls,
+  selectedAtbEl,
+  unpauseEl,
+  waitFillingEls,
+  wonEl
 } from "./elements";
 
 import {
-  setTranslate,
-  highlightHero,
-  setHeroReady,
-  unsetHeroReady,
-  setShrink,
-  unsetShrink,
-  showSecondaryMenu,
-  hideSecondaryMenus,
-  unhighlightEnemies,
-  unhighlightAllCharacters,
-  resize,
-  updateIfDifferent,
-  updateWaitWidth,
-  setAllCharactersAsSinkable,
-  unsetAllCharactersAsSinkable,
-  showMagicMenu,
-  hideMagicMenu,
+  fillItemMenu,
   fillMagicMenu,
-  unsetSelected,
+  generateHpDrainText,
+  generateItemSquare,
   generateMagicBall,
+  getRotation,
+  hideItemMenu,
+  hideMagicMenu,
+  hideSecondaryMenus,
+  highlightHero,
   moveTop,
   moveLeft,
-  setOpacity,
+  resize,
   selectAction,
-  unsetSelectable,
-  generateHpDrainText,
+  setAllCharactersAsSinkable,
   setHeight,
-  setWidth,
-  showItemMenu,
-  hideItemMenu,
-  fillItemMenu,
-  generateItemSquare,
+  setHeroReady,
+  setOpacity,
   setRotate,
-  setSelectable,
   setScale,
+  setSelectable,
+  setShrink,
+  setTranslate,
+  setWidth,
   setWon,
-  getRotation
+  showItemMenu,
+  showMagicMenu,
+  showSecondaryMenu,
+  unhighlightEnemies,
+  unhighlightAllCharacters,
+  unsetAllCharactersAsSinkable,
+  unsetHeroReady,
+  unsetSelectable,
+  unsetSelected,
+  unsetShrink,
+  updateIfDifferent,
+  updateWaitWidth
 } from "./stylers";
 
 import {
   characterFromElement,
-  getElementPosition,
-  hasClass,
-  getRandomElement,
   clamp,
+  getElementPosition,
+  getRandomElement,
+  hasClass,
   round
 } from "./helpers";
 import Queue from "./queue";
@@ -464,7 +463,7 @@ function useMagic(source, sink, data) {
   const sinkPos = getElementPosition(sink.el);
   const x = sinkPos.left - sourcePos.left;
   const y = sinkPos.top - sourcePos.top;
-  
+
   moveTop(ball, sourcePos.top);
   moveLeft(ball, sourcePos.left);
 
