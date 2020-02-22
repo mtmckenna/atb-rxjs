@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@tweenjs/tween.js": "^18",
     "rxjs": "^6.5.4"
   },
   "prettier": {

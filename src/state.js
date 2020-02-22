@@ -19,7 +19,7 @@ const hero1 = {
   attack: 200,
   maxHp: 1500,
   maxMp: 100,
-  hp: 2,
+  hp: 200,
   mp: 25,
   wait: 100,
   magic: magic1,
@@ -32,7 +32,7 @@ const hero2 = {
   attack: 300,
   maxHp: 600,
   maxMp: 300,
-  hp: 475,
+  hp: 200,
   mp: 200,
   wait: 100,
   magic: magic2,
@@ -59,7 +59,7 @@ const enemy1 = {
   maxHp: 1500,
   hp: 10,
   mp: 75,
-  wait: 50,
+  wait: 80,
   magic: magic1,
   items: [potion]
 };
@@ -70,7 +70,7 @@ const enemy2 = {
   maxHp: 30,
   hp: 20,
   mp: 200,
-  wait: 50,
+  wait: 80,
   magic: magic2,
   items: [ether]
 };
@@ -81,7 +81,7 @@ const enemy3 = {
   maxHp: 250,
   hp: 20,
   mp: 120,
-  wait: 50,
+  wait: 80,
   magic: magic3,
   items: [potion, potion]
 };

@@ -65,17 +65,18 @@ const setWidth = setStyle("width", v => `${v}px`);
 const setBackgroundImage = setStyle("backgroundImage");
 const setOpacity = setStyle("opacity");
 const unsetOpacity = unsetStyle("opacity");
-const setDead = el => setRotate(el, 90);
-const unsetDead = el => setRotate(el);
+// const setDead = el => setRotate(el, 90);
+// const unsetDead = el => setRotate(el);
+
+const setDead = el => setClass("dead");
+const unsetDead = el => unsetClass("dead");
 
 function combineTransformFunction(transformProp, formattingFunction) {
   return function() {
     const el = arguments[arguments.length - 1];
-    const transform = el.style.transform;
-    // Extract scale, rotate, translate from transform style
-    const props = transform.split(/([a-zA-Z]*\(.*?\))/).filter(p => p.length > 1);
-    const updatedProps = [];
 
+    const updatedProps = [];
+    const props = transformProps(el);
     // remove prop for list if it already exists
     const existingProp = props.find(p => p.includes(transformProp));
     if (existingProp) props.splice(props.indexOf(existingProp), 1);
@@ -94,6 +95,20 @@ function combineTransformFunction(transformProp, formattingFunction) {
 
     return updatedProps.join(" ");
   };
+}
+
+function getRotation(el) {
+  const props = transformProps(el);
+  const rotation = props.find(prop => prop.includes("rotate"));
+  if (!rotation) return 0;
+  const match = rotation.match(/rotate\((\d+)deg\)/);
+  return match[1];
+}
+
+function transformProps(el) {
+  const transform = el.style.transform;
+  // Extract scale, rotate, translate from transform style
+  return transform.split(/([a-zA-Z]*\(.*?\))/).filter(p => p.length > 1);
 }
 
 function setStyle(propName, formattingFunction = v => v) {
@@ -384,5 +399,6 @@ export {
   setRotate,
   setScale,
   setWon,
-  unsetWon
+  unsetWon,
+  getRotation
 };

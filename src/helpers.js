@@ -23,4 +23,25 @@ function hasClass(el, className) {
   return el.classList.contains(className);
 }
 
-export { isHero, isAction, characterFromElement, getElementPosition, hasClass };
+function getRandomElement(array) {
+  return array[Math.floor(Math.random() * array.length)];
+}
+
+function clamp(num, min, max) {
+  return Math.min(Math.max(num, min), max);
+}
+
+function round(num) {
+  return Math.ceil(num * 100) / 100;
+}
+
+export {
+  isHero,
+  isAction,
+  characterFromElement,
+  getElementPosition,
+  hasClass,
+  getRandomElement,
+  clamp,
+  round
+};

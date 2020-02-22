@@ -1,19 +1,26 @@
 // TODO:
 // enemies can do more than attack
-// rename wait
-// tween so can pause
-// rename heroready
+// sort imports
+// look for unused import
+// waitForSinkClickOperator take1?
+// character shakes when hit
+
+import TWEEN from "@tweenjs/tween.js";
 
 import {
   concat,
   fromEvent,
   interval,
+  forkJoin,
   merge,
   animationFrameScheduler,
   BehaviorSubject,
   Observable,
   combineLatest,
-  of
+  of,
+  defer,
+  iif,
+  EMPTY
 } from "rxjs";
 
 import {
@@ -27,9 +34,10 @@ import {
   takeUntil,
   withLatestFrom,
   startWith,
-  tap,
-  take,
-  mapTo
+  mapTo,
+  finalize,
+  delay,
+  tap
 } from "rxjs/operators";
 
 import {
@@ -48,7 +56,6 @@ import {
   itemMenuEls,
   magicMenuEls,
   getAvailableActions,
-  enemySpriteEls,
   wonEl,
   lostEl
 } from "./elements";
@@ -77,11 +84,8 @@ import {
   moveTop,
   moveLeft,
   setOpacity,
-  unsetOpacity,
   selectAction,
   unsetSelectable,
-  setDead,
-  unsetDead,
   generateHpDrainText,
   setHeight,
   setWidth,
@@ -92,20 +96,30 @@ import {
   setRotate,
   setSelectable,
   setScale,
-  setWon
+  setWon,
+  getRotation
 } from "./stylers";
 
-import { characterFromElement, getElementPosition, hasClass } from "./helpers";
-
+import {
+  characterFromElement,
+  getElementPosition,
+  hasClass,
+  getRandomElement,
+  clamp,
+  round
+} from "./helpers";
+import Queue from "./queue";
 import state from "./state";
+window.gState = state;
 
+const TRANSLATE_SPEED = 1000;
+const animationQueue = new Queue();
 const currentHero$ = new BehaviorSubject(null).pipe(distinctUntilChanged());
 const action$ = new BehaviorSubject(null);
 const paused$ = new BehaviorSubject(false);
-const animatingCount$ = new BehaviorSubject(0).pipe(scan((acc, val) => acc + val, 0));
 
 const actioning$ = action$.pipe(map(action => !!action));
-const animating$ = animatingCount$.pipe(map(count => count > 0));
+const animating$ = animationQueue.size$.pipe(map(count => count > 0));
 
 // Map of ATB modes to a list of streams that can pause the timer from filling
 // i.e. Active mode never stops, Recommended stops when the characters are
@@ -122,33 +136,29 @@ const atbMode$ = fromEvent(atbModeEls, "click").pipe(
   startWith(state.settings.atbMode)
 );
 
-const notPausedOperator = getFilterWithLatestFromOperator(paused$, v => !v);
-
 // Don't tick if pasued
+const notPausedOperator = getFilterWithLatestFromOperator(paused$, v => !v);
 const clock$ = interval(0, animationFrameScheduler).pipe(notPausedOperator, share());
 
+// Don't tick when there's an ATB reason to wait
 const timerClock$ = clock$.pipe(
   withLatestFrom(atbMode$, (_, mode) => mode),
   switchMap(mode => combineLatest(atbMap[mode])),
-  map(thingsToWaitOn => !thingsToWaitOn.some(m => m)),
-  share()
+  map(thingsToWaitOn => !thingsToWaitOn.some(m => m))
 );
 
-// Don't recognize clicks if we're paused
+// Ignore clicks if we're paused
 const clicks$ = fromEvent(document, "click").pipe(
   notPausedOperator,
-  map(([event, _]) => event.target),
+  map(event => event.target),
   share()
 );
 
 const resize$ = fromEvent(window, "resize");
 const pauseClick$ = fromEvent(pauseEl, "click");
 const secondaryMenuBackClicks$ = getClicksForElements$(secondaryMenuBackEls).pipe(mapTo(false));
-const notAnimatingOperator = getFilterWithLatestFromOperator(animating$, v => !v);
 const noActionOperator = getFilterWithLatestFromOperator(action$, v => !v);
 
-// Tick only when animations are done
-const clockAfterAnimations$ = clock$.pipe(notAnimatingOperator);
 const heroMenuBackClicks$ = getClicksForElements$(heroMenuBackEls);
 const menuLinkClicks$ = clicks$.pipe(
   filter(el => hasClass(el, "menu-link")),
@@ -164,10 +174,18 @@ const sinkClicks$ = clicks$.pipe(filter(el => hasClass(el, "sinkable")));
 const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
 const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
-const victory$ = clockAfterAnimations$.pipe(filter(() => state.enemies.every(c => c.hp <= 0)));
-const defeat$ = clockAfterAnimations$.pipe(filter(() => state.heroes.every(c => c.hp <= 0)));
+const victory$ = timerClock$.pipe(
+  filter(() => state.enemies.every(c => c.hp <= 0)),
+  distinctUntilChanged()
+);
+const defeat$ = timerClock$.pipe(
+  filter(() => state.heroes.every(c => c.hp <= 0)),
+  distinctUntilChanged()
+);
 
 resize$.subscribe(resize);
+
+clock$.subscribe(() => TWEEN.update());
 
 menuLevels$.subscribe(() => {
   action$.next(null);
@@ -282,7 +300,7 @@ attack$.subscribe(({ source, sink }) => {
   const attackDamage = source.attack;
   unhighlightEnemies();
   hideSecondaryMenus();
-  attack(source, sink, attackDamage);
+  useAttack(source, sink, attackDamage);
   completeAction();
 });
 
@@ -303,24 +321,32 @@ item$.subscribe(({ source, sink, el }) => {
 });
 
 victory$.subscribe(() => {
-  setShrink(pauseEl);
-  unsetShrink(wonEl);
-  paused$.next(true);
-  const heroes = state.heroes.filter(hero => hero.hp > 0);
-  heroes.forEach(hero => setWon(hero.el));
+  const won$ = defer(() => {
+    setShrink(pauseEl);
+    unsetShrink(wonEl);
+    paused$.next(true);
+    const heroes = state.heroes.filter(hero => hero.hp > 0);
+    heroes.forEach(hero => setWon(hero.el));
+  });
+
+  animationQueue.add(won$);
 });
 
 defeat$.subscribe(() => {
-  setShrink(pauseEl);
-  unsetShrink(lostEl);
-  paused$.next(true);
+  const defeat$ = defer(() => {
+    setShrink(pauseEl);
+    unsetShrink(lostEl);
+    paused$.next(true);
+  });
+
+  animationQueue.add(defeat$);
 });
 
 state.heroes.forEach((hero, i) => {
   const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
   const deadOperator = getCharacterIsDeadOperator(hero);
-  const heroTimer$ = configureCharacterTimer(hero);
+  const heroTimer$ = characterTimer$(hero);
   const heroDead$ = heroTimer$.pipe(deadOperator);
   const heroReady$ = heroTimer$.pipe(map(time => time === 100));
   const heroReadyOperator = getFilterWithLatestFromOperator(heroReady$, v => v);
@@ -328,8 +354,6 @@ state.heroes.forEach((hero, i) => {
     heroReadyOperator,
     noActionOperator
   );
-
-  configureDeathAnimations(hero);
 
   // Update mp display
   const incrementHpValue = getIncrementTowardsValueOperator(hero, "mp", "maxMp");
@@ -339,7 +363,7 @@ state.heroes.forEach((hero, i) => {
 
   // Update hp display
   const incrementMpValue = getIncrementTowardsValueOperator(hero, "hp", "maxHp");
-  clockAfterAnimations$.pipe(incrementMpValue).subscribe(val => {
+  clock$.pipe(incrementMpValue).subscribe(val => {
     updateIfDifferent(hpEls[i], `${Math.round(val)} / ${state.heroes[i].maxHp}`);
   });
 
@@ -356,61 +380,148 @@ state.heroes.forEach((hero, i) => {
   heroReady$.pipe(filter(r => !r)).subscribe(() => unsetHeroReady(i));
   heroDead$.subscribe(() => unsetHeroReady(i));
   heroClicks$.subscribe(() => currentHero$.next(hero));
+  heroTimer$.subscribe(time => (hero.wait = time));
 });
 
 // Configure enemies
 state.enemies.forEach(enemy => {
-  configureDeathAnimations(enemy);
-  const timer$ = configureCharacterTimer(enemy);
-  const readyOperator = getFilterWithLatestFromOperator(timer$, time => time === 100);
-  const ready$ = clockAfterAnimations$.pipe(readyOperator);
+  const timer$ = characterTimer$(enemy);
+  const ready$ = timer$.pipe(
+    distinctUntilChanged(),
+    filter(time => time === 100)
+  );
+
+  timer$.subscribe(time => (enemy.wait = time));
   ready$.subscribe(() => {
     const sink = getRandomElement(state.heroes.filter(hero => hero.hp > 0));
-
-    // Don't attack immediately after reaching 100% timer
-    const shouldAttack = Math.random() < 0.01;
-    if (sink && shouldAttack) attack(enemy, sink, enemy.attack);
+    if (sink) useAttack(enemy, sink, enemy.attack);
   });
 });
 
-function getRandomElement(array) {
-  return array[Math.floor(Math.random() * array.length)];
+function completeAction() {
+  action$.next(null);
+  currentHero$.next(null);
 }
 
-function configureDeathAnimations(character) {
-  const deadOperator = getCharacterIsDeadOperator(character);
-  const aliveOperator = getCharacterIsAliveOperator(character);
-
-  // Animate dead animations
-  clockAfterAnimations$.pipe(deadOperator).subscribe(() => setDead(character.el));
-  clockAfterAnimations$.pipe(aliveOperator).subscribe(() => unsetDead(character.el));
+function getClicksForElements$(elements) {
+  if (!Array.isArray(elements)) elements = [elements];
+  return clicks$.pipe(filter(el => elements.includes(el)));
 }
 
-function configureCharacterTimer(character) {
-  const deadOperator = getCharacterIsDeadOperator(character);
-  const aliveOperator = getCharacterIsAliveOperator(character);
+function useItem(source, sink, data) {
+  console.log(`${source.name} items ${sink.name}...`);
 
-  const aliveTimer$ = timerClock$.pipe(
-    aliveOperator,
-    map(ticking => (ticking ? 0.15 : 0)),
-    map(increase => Math.min(character.wait + increase, 100))
-  );
+  const removeItem = () => {
+    const item = source.items.find(item => (item.name = data.name));
+    source.items.splice(source.items.indexOf(item), 1);
+  };
+  const sinkEffect = () => data.effect(sink);
 
-  const deadTimer$ = clockAfterAnimations$.pipe(deadOperator, mapTo(0));
-  const timer$ = merge(aliveTimer$, deadTimer$);
+  const square = generateItemSquare();
+  const squarePos = getElementPosition(square);
+  const sourcePos = getElementPosition(source.el);
+  const sinkPos = getElementPosition(sink.el);
+  const startX = sourcePos.left + sourcePos.width / 2 - squarePos.width / 2;
+  const startY = sourcePos.top + sourcePos.height / 2 - squarePos.height / 2;
+  const endX = sinkPos.left + sinkPos.width / 2 - squarePos.width / 2;
+  const endY = sinkPos.top + sinkPos.height / 2 - squarePos.height / 2;
+  const toSinkX = endX - startX;
+  const toSinkY = endY - startY;
 
-  timer$.subscribe(time => (character.wait = time));
-  return timer$;
+  moveLeft(square, startX);
+  moveTop(square, startY);
+
+  // Animate square
+  const drainWait$ = drainCharacterWait$(source);
+  const fadeIn$ = opacityTween$(square, 0.0, 1.0);
+  const removeItem$ = deferCharacterFunction$(source, removeItem);
+  const rotate$ = rotateTween$(square, 0, 45);
+  const toSink$ = translateTween$(square, 0, 0, toSinkX, toSinkY);
+  const unrotate$ = rotateTween$(square, 45, 0);
+  const sinkResponse$ = hitResponse$(sink, sinkEffect);
+  const fadeOut$ = opacityTween$(square, 1.0, 0.0);
+  const animation$ = combinedAnimations$(
+    drainWait$,
+    fadeIn$,
+    removeItem$,
+    rotate$,
+    toSink$,
+    unrotate$,
+    sinkResponse$,
+    fadeOut$
+  ).pipe(finalize(() => square.remove()));
+
+  const queueItem$ = doAnimationIfStillAlive$(source, animation$);
+  animationQueue.add(queueItem$);
+}
+
+function useMagic(source, sink, data) {
+  console.log(`${source.name} magics ${sink.name}...`);
+  const hpDrain = sink.hp - data.damage;
+
+  const ball = generateMagicBall(data.color);
+  const sourcePos = getElementPosition(source.el);
+  const sinkPos = getElementPosition(sink.el);
+  const x = sinkPos.left - sourcePos.left;
+  const y = sinkPos.top - sourcePos.top;
+  
+  moveTop(ball, sourcePos.top);
+  moveLeft(ball, sourcePos.left);
+
+  const sinkEffect = () => {
+    updateCharacterStats(sink, sink.wait, hpDrain, sink.mp);
+    animateHpDrainText(sink, data.damage);
+  };
+
+  const drainMp = () => updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
+
+  // Animate magic ball
+  const drainWait$ = drainCharacterWait$(source);
+  const fadeIn$ = opacityTween$(ball, 0.0, 1.0);
+  const drainMp$ = deferCharacterFunction$(source, drainMp);
+  const toSink$ = translateTween$(ball, 0, 0, x, y);
+  const sinkResponse$ = hitResponse$(sink, sinkEffect);
+  const fadeOut$ = opacityTween$(ball, 1.0, 0.0);
+  const animation$ = combinedAnimations$(
+    drainWait$,
+    fadeIn$,
+    drainMp$,
+    toSink$,
+    sinkResponse$,
+    fadeOut$
+  ).pipe(finalize(() => ball.remove()));
+
+  const queueItem$ = doAnimationIfStillAlive$(source, animation$);
+  animationQueue.add(queueItem$);
+}
+
+function useAttack(source, sink, damage) {
+  console.log(`${source.name} attacks ${sink.name}...`);
+  const sourcePos = getElementPosition(source.el);
+  const sinkPos = getElementPosition(sink.el);
+  const toSinkX = sinkPos.left - sourcePos.left;
+  const toSinkY = sinkPos.top - sourcePos.top;
+
+  const sinkEffect = () => {
+    sink.hp = Math.max(sink.hp - damage, 0);
+    animateHpDrainText(sink, damage);
+  };
+
+  const drainWait$ = drainCharacterWait$(source);
+  const toSink$ = translateTween$(source.el, 0, 0, toSinkX, toSinkY);
+  const sinkResponse$ = hitResponse$(sink, sinkEffect);
+  const fromSink$ = translateTween$(source.el, toSinkX, toSinkY, 0, 0);
+  const animation$ = combinedAnimations$(drainWait$, toSink$, sinkResponse$, fromSink$);
+  const queueItem$ = doAnimationIfStillAlive$(source, animation$);
+  animationQueue.add(queueItem$);
 }
 
 function getFilterWithLatestFromOperator(stream$, conditionFunction) {
   return function(input$) {
     return input$.pipe(
       withLatestFrom(stream$),
-      filter(
-        ([_, value]) => conditionFunction(value),
-        ([s]) => s
-      )
+      filter(([_, value]) => conditionFunction(value)),
+      map(([s]) => s)
     );
   };
 }
@@ -449,110 +560,84 @@ function getCharacterIsAliveOperator(character) {
   return input$ => input$.pipe(filter(() => character.hp > 0));
 }
 
-function completeAction() {
-  action$.next(null);
-  currentHero$.next(null);
-}
+function characterTimer$(character) {
+  const deadOperator = getCharacterIsDeadOperator(character);
+  const aliveOperator = getCharacterIsAliveOperator(character);
 
-function getClicksForElements$(elements) {
-  if (!Array.isArray(elements)) elements = [elements];
-  return clicks$.pipe(filter(el => elements.includes(el)));
-}
-
-function useItem(source, sink, data) {
-  console.log(`${source.name} items ${sink.name}...`);
-  updateCharacterStats(source, 0, source.hp, source.mp);
-  const item = source.items.find(item => (item.name = data.name));
-  source.items.splice(source.items.indexOf(item), 1);
-
-  const square = generateItemSquare();
-  const squarePos = getElementPosition(square);
-  const sourcePos = getElementPosition(source.el);
-  const sinkPos = getElementPosition(sink.el);
-  const startX = sourcePos.left + sourcePos.width / 2 - squarePos.width / 2;
-  const startY = sourcePos.top + sourcePos.height / 2 - squarePos.height / 2;
-  const endX = sinkPos.left + sinkPos.width / 2 - squarePos.width / 2;
-  const endY = sinkPos.top + sinkPos.height / 2 - squarePos.height / 2;
-  const translateX = endX - startX;
-  const translateY = endY - startY;
-
-  moveLeft(square, startX);
-  moveTop(square, startY);
-
-  // Animate square
-  const fadeIn$ = getTransitionEnd$(square, "opacity", () => setOpacity(square, 1.0));
-  const rotate$ = getTransitionEnd$(square, "transform", () => setRotate(square, 45));
-  const toSink$ = getTransitionEnd$(square, "transform", () =>
-    setTranslate(square, translateX, translateY)
+  const aliveTimer$ = timerClock$.pipe(
+    aliveOperator,
+    map(ticking => (ticking ? 0.15 : 0)),
+    map(increase => round(Math.min(character.wait + increase, 100)))
   );
-  const unrotate$ = getTransitionEnd$(square, "transform", () => setRotate(square, 0));
-  const fadeOut$ = getTransitionEnd$(square, "opacity", () => unsetOpacity(square));
-  const animation$ = concat(fadeIn$, rotate$, toSink$, unrotate$, fadeOut$);
-  animatingCount$.next(1);
-  animation$.subscribe(null, null, () => {
-    data.effect(sink);
-    square.remove();
-    animatingCount$.next(-1);
+
+  const deadTimer$ = timerClock$.pipe(deadOperator, mapTo(0));
+  const timer$ = merge(aliveTimer$, deadTimer$);
+
+  return timer$;
+}
+
+function deferCharacterFunction$(character, fn) {
+  return defer(() => {
+    fn();
+    return [character];
   });
 }
 
-function useMagic(source, sink, data) {
-  console.log(`${source.name} magics ${sink.name}...`);
-  const hpDrain = sink.hp - data.damage;
-  source.wait = 0;
-  updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
-  updateCharacterStats(sink, sink.wait, hpDrain, sink.mp);
-  const ball = generateMagicBall(data.color);
-  const sourcePos = getElementPosition(source.el);
-  const sinkPos = getElementPosition(sink.el);
-  moveTop(ball, sourcePos.top);
-  moveLeft(ball, sourcePos.left);
-  const x = sinkPos.left - sourcePos.left;
-  const y = sinkPos.top - sourcePos.top;
-
-  // Animate magic ball
-  const fadeIn$ = getTransitionEnd$(ball, "opacity", () => setOpacity(ball, 1.0));
-  const toSink$ = getTransitionEnd$(ball, "transform", () => setTranslate(ball, x, y));
-  const fadeOut$ = getTransitionEnd$(ball, "opacity", () => unsetOpacity(ball));
-  const animation$ = concat(fadeIn$, toSink$, fadeOut$);
-  animatingCount$.next(1);
-  animation$.subscribe(null, null, () => {
-    animateHpDrainText(sink, data.damage);
-    ball.remove();
-    animatingCount$.next(-1);
-  });
+function drainCharacterWait$(character) {
+  const drainWait = () => (character.wait = 0);
+  return deferCharacterFunction$(character, drainWait);
 }
 
-function attack(source, sink, damage) {
-  console.log(`${source.name} attacks ${sink.name}...`);
-  source.wait = 0;
-  sink.hp = Math.max(sink.hp - damage, 0);
-  const sourcePos = getElementPosition(source.el);
-  const sinkPos = getElementPosition(sink.el);
-  const x = sinkPos.left - sourcePos.left;
-  const y = sinkPos.top - sourcePos.top;
+function hitResponse$(character, effect) {
+  const effect$ = deferCharacterFunction$(characterFromElement, effect).pipe(
+    delay(500),
+    map(() => (character.hp === 0 ? 90 : 0)),
+    switchMap(angle => rotateTween$(character.el, getRotation(character.el), angle, 200))
+  );
 
-  const toSink$ = getTransitionEnd$(source.el, "transform", () => setTranslate(source.el, x, y));
-  const fromSink$ = getTransitionEnd$(source.el, "transform", () => setTranslate(source.el, 0, 0));
-  const animation$ = concat(toSink$, fromSink$);
+  return effect$;
+}
 
-  animatingCount$
-    .pipe(
-      filter(c => c === 0),
-      take(1)
-    )
-    .subscribe(() => {
-      animatingCount$.next(1);
-      animation$.subscribe(null, null, () => {
-        animateHpDrainText(sink, damage);
-        animatingCount$.next(-1);
-      });
+function translateTween$(el, x1, y1, x2, y2, speed = TRANSLATE_SPEED) {
+  return getTweenEnd$(
+    new TWEEN.Tween({ x: x1, y: y1 })
+      .to({ x: x2, y: y2 }, speed)
+      .onUpdate(({ x, y }) => setTranslate(el, x, y))
+  );
+}
+
+function opacityTween$(el, start, end, speed = TRANSLATE_SPEED) {
+  return getTweenEnd$(
+    new TWEEN.Tween({ opacity: start })
+      .to({ opacity: end }, speed)
+      .onUpdate(({ opacity }) => setOpacity(el, opacity))
+  );
+}
+
+function rotateTween$(el, start, end, speed = TRANSLATE_SPEED) {
+  return getTweenEnd$(
+    new TWEEN.Tween({ angle: start })
+      .to({ angle: end }, speed)
+      .onUpdate(({ angle }) => setRotate(el, angle))
+  );
+}
+
+function combinedAnimations$() {
+  return forkJoin(concat(...arguments));
+}
+
+function doAnimationIfStillAlive$(character, animation$) {
+  return iif(() => character.hp > 0, animation$, EMPTY);
+}
+
+function getTweenEnd$(tween) {
+  return new Observable(subscriber => {
+    tween.start();
+    tween.onComplete(() => {
+      subscriber.next();
+      subscriber.complete();
     });
-  // animatingCount$.next(1);
-  // animation$.subscribe(null, null, () => {
-  //   animateHpDrainText(sink, damage);
-  //   animatingCount$.next(-1);
-  // });
+  });
 }
 
 function animateHpDrainText(character, drain) {
@@ -562,31 +647,20 @@ function animateHpDrainText(character, drain) {
   moveLeft(hpDrainText, pos.left);
   setHeight(hpDrainText, pos.height);
   setWidth(hpDrainText, pos.width);
-  const fadeIn$ = getTransitionEnd$(hpDrainText, "opacity", () => setOpacity(hpDrainText, 1.0));
-  const fadeOut$ = getTransitionEnd$(hpDrainText, "opacity", () => unsetOpacity(hpDrainText));
-  const fade$ = concat(fadeIn$, fadeOut$);
-  const floatUp$ = getTransitionEnd$(hpDrainText, "transform", () =>
-    setTranslate(hpDrainText, 0, -pos.height / 2)
-  );
 
+  const fadeIn$ = opacityTween$(hpDrainText, 0.0, 1.0, 500).pipe(delay(500));
+  const fadeOut$ = opacityTween$(hpDrainText, 1.0, 0.0, 500);
+  const fade$ = concat(fadeIn$, fadeOut$);
+
+  const floatUp$ = translateTween$(hpDrainText, 0, 0, 0, -pos.height / 2, 1500);
   floatUp$.subscribe();
   fade$.subscribe(null, null, () => hpDrainText.remove());
 }
 
 function updateCharacterStats(character, wait, hp, mp) {
-  character.hp = Math.min(Math.max(hp, 0), character.maxHp);
-  character.mp = Math.min(Math.max(mp, 0), character.maxMp);
-  character.wait = wait;
+  character.hp = clamp(hp, 0, character.maxHp);
+  character.mp = clamp(mp, 0, character.maxMp);
+  character.wait = clamp(wait, 0, 100);
 }
 
-function getTransitionEnd$(el, property, transform) {
-  return new Observable(subscriber => {
-    transform();
-    fromEvent(el, "transitionend")
-      .pipe(filter(event => event.propertyName === property))
-      .subscribe(() => subscriber.complete(null));
-  });
-}
-
-setOpacity(document.body, 1.0);
 resize();

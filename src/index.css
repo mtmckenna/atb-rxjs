@@ -14,8 +14,7 @@ body {
   height: 100vh;
   color: #eeeeee;
   overflow: hidden;
-  opacity: 0;
-  transition: 1s;
+  opacity: 1;
 }
 
 .container {
@@ -139,7 +138,6 @@ body {
   text-align: center;
   border-radius: 5px;
   position: absolute;
-  transition: 1s;
   image-rendering: pixelated;
   z-index: 2;
 }
@@ -319,7 +317,6 @@ body {
   height: 15vh;
   /* background: radial-gradient(red 0%, rgba(0, 0, 0, 0) 50%); */
   position: absolute;
-  transition: 1s;
   z-index: 3;
   opacity: 0;
 }
@@ -331,14 +328,12 @@ body {
     linear-gradient(127deg, rgba(0, 255, 0, 0.8), rgba(0, 255, 0, 0) 70.71%),
     linear-gradient(336deg, rgba(0, 0, 255, 0.8), rgba(0, 0, 255, 0) 70.71%);
   position: absolute;
-  transition: 0.75s;
   z-index: 3;
   opacity: 0;
 }
 
 .hp-drain {
   position: absolute;
-  transition: opacity 1s, transform 2s;
   z-index: 3;
   opacity: 0;
   font-size: 3vh;
