@@ -1,16 +1,16 @@
 import {
+  backgroundEl,
   battleEl,
   enemySpriteEls,
+  getAvailableActions,
+  groundEl,
+  groundWrapperEl,
+  heroMenuEls,
   heroNameEls,
   heroSpriteEls,
-  heroMenuEls,
-  magicMenuEls,
   itemMenuEls,
-  groundWrapperEl,
-  groundEl,
-  spriteWrapperEls,
-  backgroundEl,
-  getAvailableActions
+  magicMenuEls,
+  spriteWrapperEls
 } from "./elements";
 
 import { hasClass } from "./helpers";
@@ -65,8 +65,6 @@ const setWidth = setStyle("width", v => `${v}px`);
 const setBackgroundImage = setStyle("backgroundImage");
 const setOpacity = setStyle("opacity");
 const unsetOpacity = unsetStyle("opacity");
-// const setDead = el => setRotate(el, 90);
-// const unsetDead = el => setRotate(el);
 
 const setDead = el => setClass("dead");
 const unsetDead = el => unsetClass("dead");

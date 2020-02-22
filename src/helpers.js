@@ -36,12 +36,12 @@ function round(num) {
 }
 
 export {
+  characterFromElement,
+  clamp,
+  getElementPosition,
+  getRandomElement,
+  hasClass,
   isHero,
   isAction,
-  characterFromElement,
-  getElementPosition,
-  hasClass,
-  getRandomElement,
-  clamp,
   round
 };

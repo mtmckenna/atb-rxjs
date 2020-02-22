@@ -1,4 +1,4 @@
-import { heroNameEls, heroSpriteEls, enemySpriteEls } from "./elements";
+import { enemySpriteEls, heroNameEls, heroSpriteEls } from "./elements";
 
 const magic1 = [
   { name: "Ice", damage: 10, mpDrain: 20, color: "blue" },
