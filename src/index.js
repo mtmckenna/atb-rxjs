@@ -1,9 +1,3 @@
-// TODO:
-// enemies can do more than attack
-// look for unused import
-// waitForSinkClickOperator take1?
-// character shakes when hit
-
 import TWEEN from "@tweenjs/tween.js";
 
 import {
@@ -479,6 +473,8 @@ function useMagic(source, sink, data) {
   const fadeIn$ = opacityTween$(ball, 0.0, 1.0);
   const drainMp$ = deferCharacterFunction$(source, drainMp);
   const toSink$ = translateTween$(ball, 0, 0, x, y);
+  const shake$ = shakeTween$(sink.el, 0, 0, 15, 100);
+
   const sinkResponse$ = hitResponse$(sink, sinkEffect);
   const fadeOut$ = opacityTween$(ball, 1.0, 0.0);
   const animation$ = combinedAnimations$(
@@ -486,6 +482,7 @@ function useMagic(source, sink, data) {
     fadeIn$,
     drainMp$,
     toSink$,
+    shake$,
     sinkResponse$,
     fadeOut$
   ).pipe(finalize(() => ball.remove()));
@@ -508,9 +505,10 @@ function useAttack(source, sink, damage) {
 
   const drainWait$ = drainCharacterWait$(source);
   const toSink$ = translateTween$(source.el, 0, 0, toSinkX, toSinkY);
+  const shake$ = shakeTween$(sink.el, 0, 0, 15, 100);
   const sinkResponse$ = hitResponse$(sink, sinkEffect);
   const fromSink$ = translateTween$(source.el, toSinkX, toSinkY, 0, 0);
-  const animation$ = combinedAnimations$(drainWait$, toSink$, sinkResponse$, fromSink$);
+  const animation$ = combinedAnimations$(drainWait$, toSink$, shake$, sinkResponse$, fromSink$);
   const queueItem$ = doAnimationIfStillAlive$(source, animation$);
   animationQueue.add(queueItem$);
 }
@@ -595,6 +593,16 @@ function hitResponse$(character, effect) {
   );
 
   return effect$;
+}
+
+function shakeTween$(el, x, y, amount, speed = TRANSLATE_SPEED) {
+  return getTweenEnd$(
+    new TWEEN.Tween({ x })
+      .to({ x: x + amount }, speed)
+      .repeat(1)
+      .yoyo()
+      .onUpdate(({ x }) => setTranslate(el, x, y))
+  );
 }
 
 function translateTween$(el, x1, y1, x2, y2, speed = TRANSLATE_SPEED) {
