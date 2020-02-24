@@ -1,3 +1,5 @@
+// fix animation thing when you attack a moving enemy
+
 import TWEEN from "@tweenjs/tween.js";
 
 import {
@@ -99,6 +101,7 @@ import {
   getElementPosition,
   getRandomElement,
   hasClass,
+  isHero,
   round
 } from "./helpers";
 import Queue from "./queue";
@@ -113,6 +116,7 @@ const paused$ = new BehaviorSubject(false);
 
 const actioning$ = action$.pipe(map(action => !!action));
 const animating$ = animationQueue.size$.pipe(map(count => count > 0));
+const heroSelected$ = currentHero$.pipe(map(hero => !!hero));
 
 // Map of ATB modes to a list of streams that can pause the timer from filling
 // i.e. Active mode never stops, Recommended stops when the characters are
@@ -376,6 +380,22 @@ state.heroes.forEach((hero, i) => {
   heroTimer$.subscribe(time => (hero.wait = time));
 });
 
+const heroNotSelectedOperator = getFilterWithLatestFromOperator(
+  heroSelected$,
+  selected => !selected
+);
+
+// Automatically select here if their timer is full
+timerClock$.pipe(heroNotSelectedOperator).subscribe(() => {
+  const hero = state.heroes.find(hero => {
+    const ready = hero.wait === 100;
+    const notAlreadyQueued = animationQueue.queuedHeroes.every(queued => queued !== hero);
+    // hero's timer is full + they're not already queued;
+    return ready && notAlreadyQueued;
+  });
+  if (hero) currentHero$.next(hero);
+});
+
 // Configure enemies
 state.enemies.forEach(enemy => {
   const timer$ = characterTimer$(enemy);
@@ -510,7 +530,9 @@ function useAttack(source, sink, damage) {
   const fromSink$ = translateTween$(source.el, toSinkX, toSinkY, 0, 0);
   const animation$ = combinedAnimations$(drainWait$, toSink$, shake$, sinkResponse$, fromSink$);
   const queueItem$ = doAnimationIfStillAlive$(source, animation$);
-  animationQueue.add(queueItem$);
+
+  // if character is a hero, add them to the hero queue;
+  animationQueue.add(queueItem$, isHero(source.el) ? source : null);
 }
 
 function getFilterWithLatestFromOperator(stream$, conditionFunction) {
