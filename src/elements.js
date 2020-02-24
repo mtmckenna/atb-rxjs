@@ -44,6 +44,18 @@ const enemySpriteEls = Array(3)
     return document.getElementById(`enemy-${i}`).getElementsByClassName("sprite")[0];
   });
 
+const heroHitPointEls = Array(3)
+  .fill()
+  .map((_, i) => {
+    return document.getElementById(`hero-${i}`).getElementsByClassName("hit-point")[0];
+  });
+
+const enemyHitPointEls = Array(3)
+  .fill()
+  .map((_, i) => {
+    return document.getElementById(`enemy-${i}`).getElementsByClassName("hit-point")[0];
+  });
+
 const heroMenuEls = Array(3)
   .fill()
   .map((_, i) => {
@@ -106,6 +118,7 @@ function getAvailableActions(el = document) {
 
 export {
   battleEl,
+  enemyHitPointEls,
   pauseEl,
   unpauseEl,
   waitEls,
@@ -113,6 +126,7 @@ export {
   heroNameEls,
   hpEls,
   mpEls,
+  heroHitPointEls,
   heroSpriteEls,
   enemySpriteEls,
   heroMenuEls,

@@ -17,6 +17,13 @@ body {
   opacity: 1;
 }
 
+.hit-point {
+  width: 15vh;
+  height: 15vh;
+  z-index: -1;
+  position: absolute;
+}
+
 .container {
   display: flex;
   flex-direction: column;

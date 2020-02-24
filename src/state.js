@@ -1,4 +1,10 @@
-import { enemySpriteEls, heroNameEls, heroSpriteEls } from "./elements";
+import {
+  enemyHitPointEls,
+  enemySpriteEls,
+  heroNameEls,
+  heroSpriteEls,
+  heroHitPointEls
+} from "./elements";
 
 const magic1 = [
   { name: "Ice", damage: 10, mpDrain: 20, color: "blue" },
@@ -16,6 +22,7 @@ const hero1 = {
   name: "Wizard",
   el: heroSpriteEls[0],
   nameEl: heroNameEls[0],
+  hitPointEl: heroHitPointEls[0],
   attack: 2,
   maxHp: 1500,
   maxMp: 100,
@@ -29,6 +36,7 @@ const hero2 = {
   name: "Firefox",
   el: heroSpriteEls[1],
   nameEl: heroNameEls[1],
+  hitPointEl: heroHitPointEls[1],
   attack: 3,
   maxHp: 600,
   maxMp: 300,
@@ -42,6 +50,7 @@ const hero3 = {
   name: "Warrior",
   el: heroSpriteEls[2],
   nameEl: heroNameEls[2],
+  hitPointEl: heroHitPointEls[2],
   attack: 4,
   maxHp: 250,
   maxMp: 130,
@@ -55,6 +64,7 @@ const hero3 = {
 const enemy1 = {
   name: "Deathknight",
   el: enemySpriteEls[0],
+  hitPointEl: enemyHitPointEls[0],
   attack: 40,
   maxHp: 1500,
   hp: 10,
@@ -66,6 +76,7 @@ const enemy1 = {
 const enemy2 = {
   name: "Goblin",
   el: enemySpriteEls[1],
+  hitPointEl: enemyHitPointEls[1],
   attack: 25,
   maxHp: 30,
   hp: 20,
@@ -77,6 +88,7 @@ const enemy2 = {
 const enemy3 = {
   name: "Skeleton",
   el: enemySpriteEls[2],
+  hitPointEl: enemyHitPointEls[2],
   attack: 50,
   maxHp: 250,
   hp: 20,

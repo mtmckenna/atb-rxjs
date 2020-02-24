@@ -1,5 +1,5 @@
-// fix animation thing when you attack a moving enemy
 // how to handle back button with auto elect
+// double enemy bug
 
 import TWEEN from "@tweenjs/tween.js";
 
@@ -102,12 +102,10 @@ import {
   getElementPosition,
   getRandomElement,
   hasClass,
-  isHero,
   round
 } from "./helpers";
 import Queue from "./queue";
 import state from "./state";
-window.gState = state;
 
 const TRANSLATE_SPEED = 1000;
 const animationQueue = new Queue();
@@ -328,7 +326,7 @@ victory$.subscribe(() => {
     heroes.forEach(hero => setWon(hero.el));
   });
 
-  animationQueue.add(won$, source);
+  animationQueue.add(won$);
 });
 
 defeat$.subscribe(() => {
@@ -338,7 +336,7 @@ defeat$.subscribe(() => {
     paused$.next(true);
   });
 
-  animationQueue.add(defeat$, source);
+  animationQueue.add(defeat$);
 });
 
 state.heroes.forEach((hero, i) => {
@@ -386,12 +384,6 @@ const heroNotSelectedOperator = getFilterWithLatestFromOperator(
   heroSelected$,
   selected => !selected
 );
-
-window.gq = animationQueue;
-
-window.getQueued = function() {
-  return animationQueue.queuedSources.map(q => q.name);
-};
 
 // Automatically select here if their timer is full
 timerClock$.pipe(heroNotSelectedOperator).subscribe(() => {
@@ -441,7 +433,7 @@ function useItem(source, sink, data) {
   const square = generateItemSquare();
   const squarePos = getElementPosition(square);
   const sourcePos = getElementPosition(source.el);
-  const sinkPos = getElementPosition(sink.el);
+  const sinkPos = getElementPosition(sink.hitPointEl);
   const startX = sourcePos.left + sourcePos.width / 2 - squarePos.width / 2;
   const startY = sourcePos.top + sourcePos.height / 2 - squarePos.height / 2;
   const endX = sinkPos.left + sinkPos.width / 2 - squarePos.width / 2;
@@ -473,7 +465,7 @@ function useItem(source, sink, data) {
   ).pipe(finalize(() => square.remove()));
 
   const queueItem$ = doAnimationIfStillAlive$(source, animation$);
-  animationQueue.add(queueItem$);
+  animationQueue.add(queueItem$, source);
 }
 
 function useMagic(source, sink, data) {
@@ -482,7 +474,7 @@ function useMagic(source, sink, data) {
 
   const ball = generateMagicBall(data.color);
   const sourcePos = getElementPosition(source.el);
-  const sinkPos = getElementPosition(sink.el);
+  const sinkPos = getElementPosition(sink.hitPointEl);
   const x = sinkPos.left - sourcePos.left;
   const y = sinkPos.top - sourcePos.top;
 
@@ -516,13 +508,13 @@ function useMagic(source, sink, data) {
   ).pipe(finalize(() => ball.remove()));
 
   const queueItem$ = doAnimationIfStillAlive$(source, animation$);
-  animationQueue.add(queueItem$);
+  animationQueue.add(queueItem$, source);
 }
 
 function useAttack(source, sink, damage) {
   console.log(`${source.name} attacks ${sink.name}...`);
   const sourcePos = getElementPosition(source.el);
-  const sinkPos = getElementPosition(sink.el);
+  const sinkPos = getElementPosition(sink.hitPointEl);
   const toSinkX = sinkPos.left - sourcePos.left;
   const toSinkY = sinkPos.top - sourcePos.top;
 
