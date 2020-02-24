@@ -1,4 +1,5 @@
 // fix animation thing when you attack a moving enemy
+// how to handle back button with auto elect
 
 import TWEEN from "@tweenjs/tween.js";
 
@@ -249,6 +250,7 @@ currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
 });
 
 heroMenuBackClicks$.subscribe(() => {
+  console.log("BACK");
   currentHero$.next(null);
   action$.next(null);
 });
@@ -326,7 +328,7 @@ victory$.subscribe(() => {
     heroes.forEach(hero => setWon(hero.el));
   });
 
-  animationQueue.add(won$);
+  animationQueue.add(won$, source);
 });
 
 defeat$.subscribe(() => {
@@ -336,7 +338,7 @@ defeat$.subscribe(() => {
     paused$.next(true);
   });
 
-  animationQueue.add(defeat$);
+  animationQueue.add(defeat$, source);
 });
 
 state.heroes.forEach((hero, i) => {
@@ -385,11 +387,17 @@ const heroNotSelectedOperator = getFilterWithLatestFromOperator(
   selected => !selected
 );
 
+window.gq = animationQueue;
+
+window.getQueued = function() {
+  return animationQueue.queuedSources.map(q => q.name);
+};
+
 // Automatically select here if their timer is full
 timerClock$.pipe(heroNotSelectedOperator).subscribe(() => {
   const hero = state.heroes.find(hero => {
     const ready = hero.wait === 100;
-    const notAlreadyQueued = animationQueue.queuedHeroes.every(queued => queued !== hero);
+    const notAlreadyQueued = animationQueue.queuedSources.every(queued => queued !== hero);
     // hero's timer is full + they're not already queued;
     return ready && notAlreadyQueued;
   });
@@ -532,7 +540,7 @@ function useAttack(source, sink, damage) {
   const queueItem$ = doAnimationIfStillAlive$(source, animation$);
 
   // if character is a hero, add them to the hero queue;
-  animationQueue.add(queueItem$, isHero(source.el) ? source : null);
+  animationQueue.add(queueItem$, source);
 }
 
 function getFilterWithLatestFromOperator(stream$, conditionFunction) {

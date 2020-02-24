@@ -5,20 +5,16 @@ export default class Queue {
   constructor() {
     this.queue$ = new Subject().pipe(concatAll(), share());
     this.size$ = new BehaviorSubject(0).pipe(scan((sum, next) => sum + next, 0));
-    this.queuedHeroes = [];
-    this.queue$.subscribe(() => this.size$.next(-1));
+    this.queuedSources = [];
+    this.queue$.subscribe(() => {
+      this.size$.next(-1);
+      this.queuedSources.pop();
+    });
   }
 
-  add(item$, hero = null) {
+  add(item$, source = { name: "anonymous " }) {
     let itemToQueue$ = item$;
-
-    if (hero) {
-      this.queuedHeroes.push(hero);
-      const remove = () => (this.queuedHeroes = this.queuedHeroes.filter(q => q !== hero));
-      const remove$ = defer(remove);
-      itemToQueue$ = concat(item$, remove$);
-    }
-
+    this.queuedSources.unshift(source);
     this.size$.next(1);
     this.queue$.next(itemToQueue$);
   }
