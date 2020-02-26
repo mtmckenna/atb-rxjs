@@ -12,6 +12,10 @@ export default class Queue {
     });
   }
 
+  isQueued(source) {
+    return this.queuedSources.some(queued => queued === source);
+  }
+
   add(item$, source = { name: "anonymous " }) {
     let itemToQueue$ = item$;
     this.queuedSources.unshift(source);

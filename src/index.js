@@ -1,5 +1,6 @@
 // how to handle back button with auto elect
-// double enemy bug
+// double bug?
+// can select enemy whie queued up
 
 import TWEEN from "@tweenjs/tween.js";
 
@@ -38,6 +39,7 @@ import {
 
 import {
   atbModeEls,
+  enemyHitPointEls,
   getAvailableActions,
   heroNameEls,
   hpEls,
@@ -102,7 +104,8 @@ import {
   getElementPosition,
   getRandomElement,
   hasClass,
-  round
+  round,
+  removeElementFromArray
 } from "./helpers";
 import Queue from "./queue";
 import state from "./state";
@@ -115,7 +118,6 @@ const paused$ = new BehaviorSubject(false);
 
 const actioning$ = action$.pipe(map(action => !!action));
 const animating$ = animationQueue.size$.pipe(map(count => count > 0));
-const heroSelected$ = currentHero$.pipe(map(hero => !!hero));
 
 // Map of ATB modes to a list of streams that can pause the timer from filling
 // i.e. Active mode never stops, Recommended stops when the characters are
@@ -178,6 +180,8 @@ const defeat$ = timerClock$.pipe(
   filter(() => state.heroes.every(c => c.hp <= 0)),
   distinctUntilChanged()
 );
+
+const readyHeroes = [];
 
 resize$.subscribe(resize);
 
@@ -248,7 +252,6 @@ currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
 });
 
 heroMenuBackClicks$.subscribe(() => {
-  console.log("BACK");
   currentHero$.next(null);
   action$.next(null);
 });
@@ -373,27 +376,29 @@ state.heroes.forEach((hero, i) => {
   // Make hero look to the left
   setScale(hero.el, -1, 1);
 
-  heroReady$.pipe(filter(r => r)).subscribe(() => setHeroReady(i));
-  heroReady$.pipe(filter(r => !r)).subscribe(() => unsetHeroReady(i));
+  window.r = readyHeroes;
+  heroReady$
+    .pipe(
+      filter(r => r)
+      // filter(() => !animationQueue.isQueued(hero)),
+      // filter(() => !readyHeroes.includes(hero))
+    )
+    .subscribe(() => {
+      console.log(hero.name + " ready" + " " + readyHeroes.indexOf(hero));
+      // If action is queued up, the hero stays unready
+      // if (animationQueue.isQueued(hero)) return;
+      readyHeroes.push(hero);
+      setHeroReady(i);
+    });
+
+  heroReady$.pipe(filter(r => !r)).subscribe(() => {
+    removeElementFromArray(readyHeroes, hero);
+    unsetHeroReady(i);
+  });
+
   heroDead$.subscribe(() => unsetHeroReady(i));
   heroClicks$.subscribe(() => currentHero$.next(hero));
   heroTimer$.subscribe(time => (hero.wait = time));
-});
-
-const heroNotSelectedOperator = getFilterWithLatestFromOperator(
-  heroSelected$,
-  selected => !selected
-);
-
-// Automatically select here if their timer is full
-timerClock$.pipe(heroNotSelectedOperator).subscribe(() => {
-  const hero = state.heroes.find(hero => {
-    const ready = hero.wait === 100;
-    const notAlreadyQueued = animationQueue.queuedSources.every(queued => queued !== hero);
-    // hero's timer is full + they're not already queued;
-    return ready && notAlreadyQueued;
-  });
-  if (hero) currentHero$.next(hero);
 });
 
 // Configure enemies
@@ -401,13 +406,15 @@ state.enemies.forEach(enemy => {
   const timer$ = characterTimer$(enemy);
   const ready$ = timer$.pipe(
     distinctUntilChanged(),
-    filter(time => time === 100)
+    filter(time => time === 100),
+    tap(() => console.log(enemy.name, " ready"))
   );
 
   timer$.subscribe(time => (enemy.wait = time));
   ready$.subscribe(() => {
     const sink = getRandomElement(state.heroes.filter(hero => hero.hp > 0));
-    if (sink) useAttack(enemy, sink, enemy.attack);
+    const notQueued = !animationQueue.isQueued(enemy);
+    if (sink && notQueued) useAttack(enemy, sink, enemy.attack);
   });
 });
 
@@ -443,9 +450,10 @@ function useItem(source, sink, data) {
 
   moveLeft(square, startX);
   moveTop(square, startY);
+  drainCharacterWait(source);
 
   // Animate square
-  const drainWait$ = drainCharacterWait$(source);
+  // const drainWait$ = drainCharacterWait$(source);
   const fadeIn$ = opacityTween$(square, 0.0, 1.0);
   const removeItem$ = deferCharacterFunction$(source, removeItem);
   const rotate$ = rotateTween$(square, 0, 45);
@@ -454,7 +462,6 @@ function useItem(source, sink, data) {
   const sinkResponse$ = hitResponse$(sink, sinkEffect);
   const fadeOut$ = opacityTween$(square, 1.0, 0.0);
   const animation$ = combinedAnimations$(
-    drainWait$,
     fadeIn$,
     removeItem$,
     rotate$,
@@ -487,9 +494,10 @@ function useMagic(source, sink, data) {
   };
 
   const drainMp = () => updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
+  drainCharacterWait(source);
 
   // Animate magic ball
-  const drainWait$ = drainCharacterWait$(source);
+  // const drainWait$ = drainCharacterWait$(source);
   const fadeIn$ = opacityTween$(ball, 0.0, 1.0);
   const drainMp$ = deferCharacterFunction$(source, drainMp);
   const toSink$ = translateTween$(ball, 0, 0, x, y);
@@ -498,7 +506,6 @@ function useMagic(source, sink, data) {
   const sinkResponse$ = hitResponse$(sink, sinkEffect);
   const fadeOut$ = opacityTween$(ball, 1.0, 0.0);
   const animation$ = combinedAnimations$(
-    drainWait$,
     fadeIn$,
     drainMp$,
     toSink$,
@@ -523,12 +530,23 @@ function useAttack(source, sink, damage) {
     animateHpDrainText(sink, damage);
   };
 
-  const drainWait$ = drainCharacterWait$(source);
-  const toSink$ = translateTween$(source.el, 0, 0, toSinkX, toSinkY);
+  drainCharacterWait(source);
+
+  // const drainWait$ = drainCharacterWait$(source);
+  const fadeInHitPoint$ = opacityTween$(source.hitPointEl, 0.0, 0.5, 100);
+  const toSink$ = translateTween$(source.el, 0, 0, toSinkX, toSinkY, 3000);
   const shake$ = shakeTween$(sink.el, 0, 0, 15, 100);
   const sinkResponse$ = hitResponse$(sink, sinkEffect);
   const fromSink$ = translateTween$(source.el, toSinkX, toSinkY, 0, 0);
-  const animation$ = combinedAnimations$(drainWait$, toSink$, shake$, sinkResponse$, fromSink$);
+  const fadeOutHitPoint$ = opacityTween$(source.hitPointEl, 1.0, 0.0, 100);
+  const animation$ = combinedAnimations$(
+    fadeInHitPoint$,
+    toSink$,
+    shake$,
+    sinkResponse$,
+    fromSink$,
+    fadeOutHitPoint$
+  );
   const queueItem$ = doAnimationIfStillAlive$(source, animation$);
 
   // if character is a hero, add them to the hero queue;
@@ -579,12 +597,18 @@ function getCharacterIsAliveOperator(character) {
   return input$ => input$.pipe(filter(() => character.hp > 0));
 }
 
+function getCharacterNotQueuedOperator(character) {
+  return input$ => input$.pipe(filter(() => !animationQueue.isQueued(character)));
+}
+
 function characterTimer$(character) {
   const deadOperator = getCharacterIsDeadOperator(character);
   const aliveOperator = getCharacterIsAliveOperator(character);
+  const notQueuedOperator = getCharacterNotQueuedOperator(character);
 
   const aliveTimer$ = timerClock$.pipe(
     aliveOperator,
+    notQueuedOperator,
     map(ticking => (ticking ? 0.15 : 0)),
     map(increase => round(Math.min(character.wait + increase, 100)))
   );
@@ -602,10 +626,14 @@ function deferCharacterFunction$(character, fn) {
   });
 }
 
-function drainCharacterWait$(character) {
-  const drainWait = () => (character.wait = 0);
-  return deferCharacterFunction$(character, drainWait);
+function drainCharacterWait(character) {
+  character.wait = 0;
 }
+
+// function drainCharacterWait$(character) {
+//   const drainWait = () => (character.wait = 0);
+//   return deferCharacterFunction$(character, drainWait);
+// }
 
 function hitResponse$(character, effect) {
   const effect$ = deferCharacterFunction$(characterFromElement, effect).pipe(
@@ -618,13 +646,19 @@ function hitResponse$(character, effect) {
 }
 
 function shakeTween$(el, x, y, amount, speed = TRANSLATE_SPEED) {
-  return getTweenEnd$(
-    new TWEEN.Tween({ x })
-      .to({ x: x + amount }, speed)
-      .repeat(1)
-      .yoyo()
-      .onUpdate(({ x }) => setTranslate(el, x, y))
-  );
+  const shake = new TWEEN.Tween({ x })
+    .to({ x: x + amount }, speed)
+    .repeat(1)
+    .yoyo()
+    .onUpdate(({ x }) => setTranslate(el, x, y));
+
+  const unShake = new TWEEN.Tween({ x: x + amount })
+    .to({ x }, speed)
+    .onUpdate(({ x }) => setTranslate(el, x, y));
+
+  shake.chain(unShake);
+
+  return getTweenEnd$(shake);
 }
 
 function translateTween$(el, x1, y1, x2, y2, speed = TRANSLATE_SPEED) {

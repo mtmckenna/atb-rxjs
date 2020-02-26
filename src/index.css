@@ -133,7 +133,7 @@ body {
   background-color: seagreen;
 }
 
-.sprite {
+.character {
   width: 15vh;
   height: 15vh;
   background-size: contain;
@@ -146,7 +146,15 @@ body {
   border-radius: 5px;
   position: absolute;
   image-rendering: pixelated;
+}
+
+.character.sprite {
   z-index: 2;
+}
+
+.character.hit-point {
+  opacity: 0;
+  z-index: 1;
 }
 
 .sprite-selected {
@@ -259,6 +267,10 @@ body {
 
 .sprite.ready {
   filter: drop-shadow(0 0 10px #fff);
+}
+
+.name.ready {
+  color: yellow;
 }
 
 .ground-wrapper {

@@ -1,6 +1,7 @@
 import {
   backgroundEl,
   battleEl,
+  enemyHitPointEls,
   enemySpriteEls,
   getAvailableActions,
   groundEl,
@@ -146,13 +147,13 @@ function unsetClass(className) {
 }
 
 function setAllCharactersAsSinkable() {
-  const els = [heroNameEls, heroSpriteEls, enemySpriteEls].flat();
+  const els = [heroNameEls, heroSpriteEls, enemySpriteEls, enemyHitPointEls].flat();
   els.forEach(setSelectable);
   els.forEach(setSinkable);
 }
 
 function unsetAllCharactersAsSinkable() {
-  const els = [heroNameEls, heroSpriteEls, enemySpriteEls].flat();
+  const els = [heroNameEls, heroSpriteEls, enemySpriteEls, enemyHitPointEls].flat();
   els.forEach(unsetSelectable);
   els.forEach(unsetSinkable);
 }
@@ -191,13 +192,15 @@ function highlightHero(heroIndex) {
 }
 
 function highlightEnemies() {
-  enemySpriteEls.forEach(setSelectable);
-  enemySpriteEls.forEach(setSinkable);
+  const els = [enemySpriteEls, enemyHitPointEls].flat();
+  els.forEach(setSelectable);
+  els.forEach(setSinkable);
 }
 
 function unhighlightEnemies() {
-  enemySpriteEls.forEach(unsetSelectable);
-  enemySpriteEls.forEach(unsetSinkable);
+  const els = [enemySpriteEls, enemyHitPointEls].flat();
+  els.forEach(unsetSelectable);
+  els.forEach(unsetSinkable);
 }
 
 function setHeroReady(heroIndex) {

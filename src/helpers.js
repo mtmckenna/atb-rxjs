@@ -35,6 +35,10 @@ function round(num) {
   return Math.ceil(num * 100) / 100;
 }
 
+function removeElementFromArray(array, element) {
+  return array.splice(array.indexOf(element), 1);
+}
+
 export {
   characterFromElement,
   clamp,
@@ -43,5 +47,6 @@ export {
   hasClass,
   isHero,
   isAction,
+  removeElementFromArray,
   round
 };
