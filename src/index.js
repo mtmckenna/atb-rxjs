@@ -1,6 +1,6 @@
-// how to handle back button with auto elect
-// double bug?
-// can select enemy whie queued up
+// move currentHeroClock$ into hero setup
+// win/lose is busted (maybe bc promise/resolve?)
+/////maybe fixed for now but why does timer not work??
 
 import TWEEN from "@tweenjs/tween.js";
 
@@ -142,7 +142,7 @@ const clock$ = interval(0, animationFrameScheduler).pipe(notPausedOperator, shar
 const timerClock$ = clock$.pipe(
   withLatestFrom(atbMode$, (_, mode) => mode),
   switchMap(mode => combineLatest(atbMap[mode])),
-  map(thingsToWaitOn => !thingsToWaitOn.some(m => m))
+  filter(thingsToWaitOn => !thingsToWaitOn.some(m => m))
 );
 
 // Ignore clicks if we're paused
@@ -172,20 +172,24 @@ const sinkClicks$ = clicks$.pipe(filter(el => hasClass(el, "sinkable")));
 const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
 const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
-const victory$ = timerClock$.pipe(
+const victory$ = clock$.pipe(
   filter(() => state.enemies.every(c => c.hp <= 0)),
   distinctUntilChanged()
 );
-const defeat$ = timerClock$.pipe(
+const defeat$ = clock$.pipe(
   filter(() => state.heroes.every(c => c.hp <= 0)),
   distinctUntilChanged()
 );
 
+const noCurrentHeroOperator = getFilterWithLatestFromOperator(currentHero$, h => !h);
 const readyHeroes = [];
 
 resize$.subscribe(resize);
 
 clock$.subscribe(() => TWEEN.update());
+clock$.pipe(noCurrentHeroOperator).subscribe(() => {
+  if (readyHeroes.length) currentHero$.next(readyHeroes[0]);
+});
 
 menuLevels$.subscribe(() => {
   action$.next(null);
@@ -243,6 +247,8 @@ currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   fillItemMenu(itemcMenu, items);
   highlightHero(index);
   showSecondaryMenu(index);
+  removeElementFromArray(readyHeroes, hero);
+  console.log(readyHeroes);
 });
 
 currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
@@ -327,6 +333,7 @@ victory$.subscribe(() => {
     paused$.next(true);
     const heroes = state.heroes.filter(hero => hero.hp > 0);
     heroes.forEach(hero => setWon(hero.el));
+    return Promise.resolve();
   });
 
   animationQueue.add(won$);
@@ -337,6 +344,7 @@ defeat$.subscribe(() => {
     setShrink(pauseEl);
     unsetShrink(lostEl);
     paused$.next(true);
+    return Promise.resolve();
   });
 
   animationQueue.add(defeat$);
@@ -345,10 +353,14 @@ defeat$.subscribe(() => {
 state.heroes.forEach((hero, i) => {
   const nameEl = heroNameEls[i];
   const spriteEl = heroSpriteEls[i];
-  const deadOperator = getCharacterIsDeadOperator(hero);
   const heroTimer$ = characterTimer$(hero);
-  const heroDead$ = heroTimer$.pipe(deadOperator);
-  const heroReady$ = heroTimer$.pipe(map(time => time === 100));
+
+  const heroDead$ = heroTimer$.pipe(filter(() => hero.hp <= 0));
+  const heroReady$ = clock$.pipe(
+    map(() => hero.wait === 100),
+    map(ready => (hero.hp > 0 ? ready : false)),
+    distinctUntilChanged()
+  );
   const heroReadyOperator = getFilterWithLatestFromOperator(heroReady$, v => v);
   const heroClicks$ = getClicksForElements$([nameEl, spriteEl]).pipe(
     heroReadyOperator,
@@ -376,20 +388,13 @@ state.heroes.forEach((hero, i) => {
   // Make hero look to the left
   setScale(hero.el, -1, 1);
 
-  window.r = readyHeroes;
-  heroReady$
-    .pipe(
-      filter(r => r)
-      // filter(() => !animationQueue.isQueued(hero)),
-      // filter(() => !readyHeroes.includes(hero))
-    )
-    .subscribe(() => {
-      console.log(hero.name + " ready" + " " + readyHeroes.indexOf(hero));
-      // If action is queued up, the hero stays unready
-      // if (animationQueue.isQueued(hero)) return;
+  heroReady$.pipe(filter(r => r)).subscribe(() => {
+    if (!readyHeroes.includes(hero)) {
       readyHeroes.push(hero);
-      setHeroReady(i);
-    });
+      console.log(readyHeroes);
+    }
+    setHeroReady(i);
+  });
 
   heroReady$.pipe(filter(r => !r)).subscribe(() => {
     removeElementFromArray(readyHeroes, hero);
@@ -414,7 +419,7 @@ state.enemies.forEach(enemy => {
   ready$.subscribe(() => {
     const sink = getRandomElement(state.heroes.filter(hero => hero.hp > 0));
     const notQueued = !animationQueue.isQueued(enemy);
-    if (sink && notQueued) useAttack(enemy, sink, enemy.attack);
+    if (sink) useAttack(enemy, sink, enemy.attack);
   });
 });
 
@@ -434,8 +439,13 @@ function useItem(source, sink, data) {
   const removeItem = () => {
     const item = source.items.find(item => (item.name = data.name));
     source.items.splice(source.items.indexOf(item), 1);
+    return Promise.resolve();
   };
-  const sinkEffect = () => data.effect(sink);
+
+  const sinkEffect = () => {
+    data.effect(sink);
+    return Promise.resolve();
+  };
 
   const square = generateItemSquare();
   const squarePos = getElementPosition(square);
@@ -453,9 +463,8 @@ function useItem(source, sink, data) {
   drainCharacterWait(source);
 
   // Animate square
-  // const drainWait$ = drainCharacterWait$(source);
   const fadeIn$ = opacityTween$(square, 0.0, 1.0);
-  const removeItem$ = deferCharacterFunction$(source, removeItem);
+  const removeItem$ = defer(() => removeItem());
   const rotate$ = rotateTween$(square, 0, 45);
   const toSink$ = translateTween$(square, 0, 0, toSinkX, toSinkY);
   const unrotate$ = rotateTween$(square, 45, 0);
@@ -491,15 +500,19 @@ function useMagic(source, sink, data) {
   const sinkEffect = () => {
     updateCharacterStats(sink, sink.wait, hpDrain, sink.mp);
     animateHpDrainText(sink, data.damage);
+    return Promise.resolve();
   };
 
-  const drainMp = () => updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
+  const drainMp = () => {
+    updateCharacterStats(source, 0, source.hp, source.mp - data.mpDrain);
+    return Promise.resolve();
+  };
+
   drainCharacterWait(source);
 
   // Animate magic ball
-  // const drainWait$ = drainCharacterWait$(source);
   const fadeIn$ = opacityTween$(ball, 0.0, 1.0);
-  const drainMp$ = deferCharacterFunction$(source, drainMp);
+  const drainMp$ = defer(() => drainMp());
   const toSink$ = translateTween$(ball, 0, 0, x, y);
   const shake$ = shakeTween$(sink.el, 0, 0, 15, 100);
 
@@ -528,13 +541,13 @@ function useAttack(source, sink, damage) {
   const sinkEffect = () => {
     sink.hp = Math.max(sink.hp - damage, 0);
     animateHpDrainText(sink, damage);
+    return Promise.resolve();
   };
 
   drainCharacterWait(source);
 
-  // const drainWait$ = drainCharacterWait$(source);
   const fadeInHitPoint$ = opacityTween$(source.hitPointEl, 0.0, 0.5, 100);
-  const toSink$ = translateTween$(source.el, 0, 0, toSinkX, toSinkY, 3000);
+  const toSink$ = translateTween$(source.el, 0, 0, toSinkX, toSinkY);
   const shake$ = shakeTween$(sink.el, 0, 0, 15, 100);
   const sinkResponse$ = hitResponse$(sink, sinkEffect);
   const fromSink$ = translateTween$(source.el, toSinkX, toSinkY, 0, 0);
@@ -589,60 +602,21 @@ function getIncrementTowardsValueOperator(object, key, maxKey) {
   };
 }
 
-function getCharacterIsDeadOperator(character) {
-  return input$ => input$.pipe(filter(() => character.hp <= 0));
-}
-
-function getCharacterIsAliveOperator(character) {
-  return input$ => input$.pipe(filter(() => character.hp > 0));
-}
-
-function getCharacterNotQueuedOperator(character) {
-  return input$ => input$.pipe(filter(() => !animationQueue.isQueued(character)));
-}
-
 function characterTimer$(character) {
-  const deadOperator = getCharacterIsDeadOperator(character);
-  const aliveOperator = getCharacterIsAliveOperator(character);
-  const notQueuedOperator = getCharacterNotQueuedOperator(character);
-
-  const aliveTimer$ = timerClock$.pipe(
-    aliveOperator,
-    notQueuedOperator,
-    map(ticking => (ticking ? 0.15 : 0)),
+  return timerClock$.pipe(
+    mapTo(0.15),
+    map(increase => (character.hp > 0 ? increase : 0)),
+    map(increase => (!animationQueue.isQueued(character) ? increase : 0)),
     map(increase => round(Math.min(character.wait + increase, 100)))
   );
-
-  const deadTimer$ = timerClock$.pipe(deadOperator, mapTo(0));
-  const timer$ = merge(aliveTimer$, deadTimer$);
-
-  return timer$;
 }
-
-function deferCharacterFunction$(character, fn) {
-  return defer(() => {
-    fn();
-    return [character];
-  });
-}
-
-function drainCharacterWait(character) {
-  character.wait = 0;
-}
-
-// function drainCharacterWait$(character) {
-//   const drainWait = () => (character.wait = 0);
-//   return deferCharacterFunction$(character, drainWait);
-// }
 
 function hitResponse$(character, effect) {
-  const effect$ = deferCharacterFunction$(characterFromElement, effect).pipe(
+  return defer(() => effect()).pipe(
     delay(500),
     map(() => (character.hp === 0 ? 90 : 0)),
     switchMap(angle => rotateTween$(character.el, getRotation(character.el), angle, 200))
   );
-
-  return effect$;
 }
 
 function shakeTween$(el, x, y, amount, speed = TRANSLATE_SPEED) {
@@ -718,6 +692,10 @@ function animateHpDrainText(character, drain) {
   const floatUp$ = translateTween$(hpDrainText, 0, 0, 0, -pos.height / 2, 1500);
   floatUp$.subscribe();
   fade$.subscribe(null, null, () => hpDrainText.remove());
+}
+
+function drainCharacterWait(character) {
+  character.wait = 0;
 }
 
 function updateCharacterStats(character, wait, hp, mp) {

@@ -36,6 +36,7 @@ function round(num) {
 }
 
 function removeElementFromArray(array, element) {
+  if (!array.includes(element)) return -1;
   return array.splice(array.indexOf(element), 1);
 }
 
