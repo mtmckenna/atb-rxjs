@@ -1,6 +1,4 @@
-// move currentHeroClock$ into hero setup
-// win/lose is busted (maybe bc promise/resolve?)
-/////maybe fixed for now but why does timer not work??
+// if queued enemy is dead, pick diff enemy on attack
 
 import TWEEN from "@tweenjs/tween.js";
 
@@ -13,7 +11,6 @@ import {
   EMPTY,
   fromEvent,
   iif,
-  interval,
   forkJoin,
   merge,
   Observable,
@@ -28,12 +25,12 @@ import {
   map,
   mapTo,
   pluck,
+  repeat,
   scan,
   share,
   startWith,
   switchMap,
   takeUntil,
-  tap,
   withLatestFrom
 } from "rxjs/operators";
 
@@ -77,7 +74,6 @@ import {
   setHeroReady,
   setOpacity,
   setRotate,
-  setScale,
   setSelectable,
   setShrink,
   setTranslate,
@@ -103,9 +99,11 @@ import {
   getElementPosition,
   getRandomElement,
   hasClass,
+  isHero,
   round,
   removeElementFromArray
 } from "./helpers";
+
 import Queue from "./queue";
 import state from "./state";
 
@@ -114,8 +112,6 @@ const animationQueue = new Queue();
 const currentHero$ = new BehaviorSubject(null).pipe(distinctUntilChanged());
 const action$ = new BehaviorSubject(null);
 const paused$ = new BehaviorSubject(false);
-
-window.q = animationQueue;
 
 const actioning$ = action$.pipe(map(action => !!action));
 const animating$ = animationQueue.size$.pipe(map(count => count > 0));
@@ -137,7 +133,7 @@ const atbMode$ = fromEvent(atbModeEls, "click").pipe(
 
 // Don't tick if pasued
 const notPausedOperator = getFilterWithLatestFromOperator(paused$, v => !v);
-const clock$ = interval(0, animationFrameScheduler).pipe(notPausedOperator, share());
+const clock$ = of(null, animationFrameScheduler).pipe(repeat(), notPausedOperator, share());
 
 // Don't tick when there's an ATB reason to wait
 const timerClock$ = clock$.pipe(
@@ -145,8 +141,6 @@ const timerClock$ = clock$.pipe(
   switchMap(mode => combineLatest(atbMap[mode])),
   filter(thingsToWaitOn => !thingsToWaitOn.some(m => m))
 );
-
-timerClock$.subscribe(() => console.log("tick"));
 
 // Ignore clicks if we're paused
 const clicks$ = fromEvent(document, "click").pipe(
@@ -174,15 +168,22 @@ const noMenu$ = menuLevels$.pipe(filter(menu => !menu));
 const sinkClicks$ = clicks$.pipe(filter(el => hasClass(el, "sinkable")));
 const actionSelected$ = action$.pipe(filter(action => !!action));
 const actionUnselected$ = action$.pipe(filter(action => !action));
-const currentHeroClock$ = clock$.pipe(withLatestFrom(currentHero$, (_, hero) => hero));
-const victory$ = clock$.pipe(
-  filter(() => state.enemies.every(c => c.hp <= 0)),
-  distinctUntilChanged()
+const currentHeroDead$ = clock$.pipe(
+  withLatestFrom(currentHero$, (_, hero) => hero),
+  filter(hero => !!hero),
+  filter(hero => hero.hp <= 0)
 );
 
-const defeat$ = clock$.pipe(
-  filter(() => state.heroes.every(c => c.hp <= 0)),
-  distinctUntilChanged()
+const victory$ = clock$.pipe(
+  map(() => state.enemies.every(c => c.hp <= 0)),
+  distinctUntilChanged(),
+  filter(won => won)
+);
+
+const defeat$ = timerClock$.pipe(
+  map(() => state.heroes.every(c => c.hp <= 0)),
+  distinctUntilChanged(),
+  filter(lost => lost)
 );
 
 const noCurrentHeroOperator = getFilterWithLatestFromOperator(currentHero$, h => !h);
@@ -190,7 +191,6 @@ const readyHeroes = [];
 
 resize$.subscribe(resize);
 
-clock$.subscribe(() => TWEEN.update());
 clock$.pipe(noCurrentHeroOperator).subscribe(() => {
   if (readyHeroes.length) currentHero$.next(readyHeroes[0]);
 });
@@ -225,21 +225,9 @@ atbMode$.subscribe(mode => {
   unsetShrink(pauseEl);
 });
 
-clock$.subscribe(() => updateIfDifferent(selectedAtbEl, state.settings.atbMode));
-
-currentHeroClock$.subscribe(hero => {
-  if (!hero) return;
-  const index = state.heroes.indexOf(hero);
-  const magicMenu = magicMenuEls[index];
-  getAvailableActions(magicMenu).forEach(row => {
-    if (hero.magic[row.dataset.index].mpDrain > hero.mp) {
-      unsetSelectable(row);
-    } else {
-      setSelectable(row);
-    }
-  });
-
-  if (hero.hp <= 0) currentHero$.next(null);
+clock$.subscribe(() => {
+  TWEEN.update();
+  updateIfDifferent(selectedAtbEl, state.settings.atbMode);
 });
 
 currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
@@ -253,6 +241,8 @@ currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   showSecondaryMenu(index);
   removeElementFromArray(readyHeroes, hero);
 });
+
+currentHeroDead$.subscribe(() => currentHero$.next(null));
 
 currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
   action$.next(null);
@@ -347,6 +337,8 @@ defeat$.subscribe(() => {
     setShrink(pauseEl);
     unsetShrink(lostEl);
     paused$.next(true);
+    const enemies = state.enemies.filter(enemy => enemy.hp > 0);
+    enemies.forEach(enemy => setWon(enemy.el));
     return Promise.resolve();
   });
 
@@ -370,39 +362,53 @@ state.heroes.forEach((hero, i) => {
     noActionOperator
   );
 
-  // Update mp display
+  // Set name
+  updateIfDifferent(heroNameEls[i], `${hero.name}`);
+
+  // Update MP display
   const incrementHpValue = getIncrementTowardsValueOperator(hero, "mp", "maxMp");
   clock$.pipe(incrementHpValue).subscribe(val => {
-    updateIfDifferent(mpEls[i], `${Math.round(val)}`);
+    updateIfDifferent(mpEls[i], `${val}`);
   });
 
-  // Update hp display
+  // Update HP display
   const incrementMpValue = getIncrementTowardsValueOperator(hero, "hp", "maxHp");
   clock$.pipe(incrementMpValue).subscribe(val => {
-    updateIfDifferent(hpEls[i], `${Math.round(val)} / ${state.heroes[i].maxHp}`);
+    updateIfDifferent(hpEls[i], `${val} / ${state.heroes[i].maxHp}`);
   });
 
   // Update timer display
   clock$.subscribe(() => updateWaitWidth(waitFillingEls[i], hero.wait));
 
-  // Update name
-  updateIfDifferent(heroNameEls[i], `${hero.name}`);
+  // Disable magic that costs too much MP
+  clock$.subscribe(() => {
+    const magicMenu = magicMenuEls[i];
+    getAvailableActions(magicMenu).forEach(row => {
+      unsetSelectable(row);
+      const spell = hero.magic[row.dataset.index];
+      if (spell.mpDrain < hero.mp) setSelectable(row);
+    });
+  });
 
-  // Make hero look to the left
-  setScale(hero.el, -1, 1);
-
+  // Set hero as ready
   heroReady$.pipe(filter(r => r)).subscribe(() => {
     if (!readyHeroes.includes(hero)) readyHeroes.push(hero);
     setHeroReady(i);
   });
 
+  // Set hero as not ready
   heroReady$.pipe(filter(r => !r)).subscribe(() => {
     removeElementFromArray(readyHeroes, hero);
     unsetHeroReady(i);
   });
 
+  // Set hero as not raeady if dead
   heroDead$.subscribe(() => unsetHeroReady(i));
+
+  // Set hero as current hero
   heroClicks$.subscribe(() => currentHero$.next(hero));
+
+  // Update wait timer
   heroTimer$.subscribe(time => (hero.wait = time));
 });
 
@@ -417,7 +423,6 @@ state.enemies.forEach(enemy => {
   timer$.subscribe(time => (enemy.wait = time));
   ready$.subscribe(() => {
     const sink = getRandomElement(state.heroes.filter(hero => hero.hp > 0));
-    const notQueued = !animationQueue.isQueued(enemy);
     if (sink) useAttack(enemy, sink, enemy.attack);
   });
 });
@@ -594,7 +599,7 @@ function getIncrementTowardsValueOperator(object, key, maxKey) {
         let inc = object[maxKey] / 240; // Amount to increment by
         if (diff < 0) inc = -inc;
         if (diff === 0) inc = 0;
-        return Math.min(Math.max(acc + inc, 0), object[maxKey]);
+        return round(Math.min(Math.max(acc + inc, 0), object[maxKey]), 0);
       }, object[key])
     );
   };
@@ -612,7 +617,8 @@ function characterTimer$(character) {
 function hitResponse$(character, effect) {
   return defer(() => effect()).pipe(
     delay(500),
-    map(() => (character.hp === 0 ? 90 : 0)),
+    map(() => (character.hp === 0 ? -90 : 0)),
+    map(angle => (isHero(character.el) ? angle : -angle)),
     switchMap(angle => rotateTween$(character.el, getRotation(character.el), angle, 200))
   );
 }

@@ -152,6 +152,14 @@ body {
   z-index: 2;
 }
 
+.sprite.hero {
+  background-position-x: right;
+}
+
+.sprite.enemy {
+  background-position-x: left;
+}
+
 .character.hit-point {
   opacity: 0;
   z-index: 1;
@@ -170,10 +178,10 @@ body {
 
 @keyframes animation-jump {
   from {
-    transform: scale(-1, 1) translate(0, 0);
+    transform: scale(1, 1) translate(0, 0);
   }
   to {
-    transform: scale(-1, 1) translate(0, -25px);
+    transform: scale(1, 1) translate(0, -25px);
   }
 }
 

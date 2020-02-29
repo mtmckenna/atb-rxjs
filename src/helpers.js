@@ -31,8 +31,9 @@ function clamp(num, min, max) {
   return Math.min(Math.max(num, min), max);
 }
 
-function round(num) {
-  return Math.ceil(num * 100) / 100;
+function round(num, decimals = 2) {
+  const mult = Math.pow(10, decimals);
+  return Math.ceil(num * mult) / mult;
 }
 
 function removeElementFromArray(array, element) {
