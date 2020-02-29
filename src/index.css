@@ -266,11 +266,11 @@ body {
 }
 
 .sprite.ready {
-  filter: drop-shadow(0 0 10px #fff);
+  filter: drop-shadow(0 0 10px #f5f06e);
 }
 
 .name.ready {
-  color: yellow;
+  color: #f5f06e;
 }
 
 .ground-wrapper {

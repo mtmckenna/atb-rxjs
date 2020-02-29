@@ -26,7 +26,7 @@ const hero1 = {
   attack: 2000,
   maxHp: 1500,
   maxMp: 100,
-  hp: 1000,
+  hp: 1,
   mp: 25,
   wait: 99,
   magic: magic1,

@@ -39,7 +39,6 @@ import {
 
 import {
   atbModeEls,
-  enemyHitPointEls,
   getAvailableActions,
   heroNameEls,
   hpEls,
@@ -116,6 +115,8 @@ const currentHero$ = new BehaviorSubject(null).pipe(distinctUntilChanged());
 const action$ = new BehaviorSubject(null);
 const paused$ = new BehaviorSubject(false);
 
+window.q = animationQueue;
+
 const actioning$ = action$.pipe(map(action => !!action));
 const animating$ = animationQueue.size$.pipe(map(count => count > 0));
 
@@ -144,6 +145,8 @@ const timerClock$ = clock$.pipe(
   switchMap(mode => combineLatest(atbMap[mode])),
   filter(thingsToWaitOn => !thingsToWaitOn.some(m => m))
 );
+
+timerClock$.subscribe(() => console.log("tick"));
 
 // Ignore clicks if we're paused
 const clicks$ = fromEvent(document, "click").pipe(
@@ -176,6 +179,7 @@ const victory$ = clock$.pipe(
   filter(() => state.enemies.every(c => c.hp <= 0)),
   distinctUntilChanged()
 );
+
 const defeat$ = clock$.pipe(
   filter(() => state.heroes.every(c => c.hp <= 0)),
   distinctUntilChanged()
@@ -248,7 +252,6 @@ currentHero$.pipe(filter(hero => !!hero)).subscribe(hero => {
   highlightHero(index);
   showSecondaryMenu(index);
   removeElementFromArray(readyHeroes, hero);
-  console.log(readyHeroes);
 });
 
 currentHero$.pipe(filter(hero => !hero)).subscribe(() => {
@@ -389,10 +392,7 @@ state.heroes.forEach((hero, i) => {
   setScale(hero.el, -1, 1);
 
   heroReady$.pipe(filter(r => r)).subscribe(() => {
-    if (!readyHeroes.includes(hero)) {
-      readyHeroes.push(hero);
-      console.log(readyHeroes);
-    }
+    if (!readyHeroes.includes(hero)) readyHeroes.push(hero);
     setHeroReady(i);
   });
 
@@ -411,8 +411,7 @@ state.enemies.forEach(enemy => {
   const timer$ = characterTimer$(enemy);
   const ready$ = timer$.pipe(
     distinctUntilChanged(),
-    filter(time => time === 100),
-    tap(() => console.log(enemy.name, " ready"))
+    filter(time => time === 100)
   );
 
   timer$.subscribe(time => (enemy.wait = time));
@@ -562,7 +561,6 @@ function useAttack(source, sink, damage) {
   );
   const queueItem$ = doAnimationIfStillAlive$(source, animation$);
 
-  // if character is a hero, add them to the hero queue;
   animationQueue.add(queueItem$, source);
 }
 
