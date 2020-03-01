@@ -1,3 +1,5 @@
+import TWEEN from "@tweenjs/tween.js";
+
 import {
   waitFillingEls,
   heroNameEls,
@@ -12,7 +14,6 @@ import {
 
 import {
   setTranslate,
-  unsetTranslate,
   highlightHeroes,
   highlightHero,
   highlightEnemies,
@@ -26,8 +27,7 @@ import {
   unhighlightAllCharacters,
   resize,
   updateIfDifferent,
-  updateWaitWidth,
-  setOpacity
+  updateWaitWidth
 } from "./stylers";
 
 import { isAction, characterFromElement, getElementPosition } from "./helpers";
@@ -44,16 +44,24 @@ const battleState = {
   currentHero: null,
   paused: false,
   action: null,
-  animating: false,
   heroes: [],
   enemies: [],
   timers: []
 };
 
+const TRANSLATE_SPEED = 1000;
+
 window.addEventListener("resize", resize);
 document.addEventListener("click", clickHandler);
 pauseEl.addEventListener("click", pause);
 Array.from(atbModeEls).forEach(el => el.addEventListener("click", setAtbMode));
+
+state.heroes.forEach((_, i) => {
+  const nameEl = heroNameEls[i];
+  const spriteEl = heroSpriteEls[i];
+  const hero = state.heroes[i];
+  [nameEl, spriteEl].forEach(el => el.addEventListener("click", () => selectHero(hero)));
+});
 
 function clickHandler(event) {
   const el = event.target;
@@ -68,7 +76,7 @@ function clickHandler(event) {
   }
 
   if (el.classList.contains("sinkable")) performAction(el);
-  if (el.classList.contains("secondary-back")) goBackToBattle();
+  if (el.classList.contains("hero-back")) goBackToBattle();
 }
 
 function goBackToBattle() {
@@ -84,17 +92,10 @@ function prepareAttack(el) {
   highlightHeroes();
 }
 
-state.heroes.forEach((_, i) => {
-  const nameEl = heroNameEls[i];
-  const spriteEl = heroSpriteEls[i];
-  const hero = state.heroes[i];
-  [nameEl, spriteEl].forEach(el => el.addEventListener("click", () => selectHero(hero)));
-});
-
 function performAction(el) {
   const sink = characterFromElement(el);
   if (battleState.action === "attack") {
-    attack(battleState.currentHero, sink);
+    useAttack(battleState.currentHero, sink);
   }
 
   battleState.action = null;
@@ -103,6 +104,7 @@ function performAction(el) {
 
 function selectHero(hero) {
   if (hero.wait < 100) return;
+  if (battleState.paused) return;
   const index = state.heroes.indexOf(hero);
   battleState.currentHero = hero;
   highlightHero(index);
@@ -128,41 +130,39 @@ function unpause() {
 }
 
 function getAnimating() {
-  return battleState.animating;
+  return battleState.heroes.some(h => h.animating) || battleState.enemies.some(h => h.animating);
 }
 
 function getAction() {
-  return battleState.action;
+  return !!battleState.action;
 }
 
-function attack(source, sink) {
-  console.log(`${battleState.currentHero.name} attacks ${sink.name}...`);
-  source.wait = 0;
+function useAttack(source, sink) {
+  console.log(`${source.name} attacks ${sink.name}...`);
+  const index = state.heroes.indexOf(source);
   unhighlightAllCharacters();
   hideSecondaryMenus();
+
   const sourcePos = getElementPosition(source.el);
-  const sinkPos = getElementPosition(sink.el);
-  const x = sinkPos.left - sourcePos.left;
-  const y = sinkPos.top - sourcePos.top;
+  const sinkPos = getElementPosition(sink.hitPointEl);
+  const toSinkX = sinkPos.left - sourcePos.left;
+  const toSinkY = sinkPos.top - sourcePos.top;
 
-  setTranslate(source.el, x, y);
-  source.el.addEventListener("transitionend", translateCallback);
+  const toSink = translateTween(source.el, 0, 0, toSinkX, toSinkY);
+  const fromSink = translateTween(source.el, toSinkX, toSinkY, 0, 0);
 
-  function translateCallback(event) {
-    if (event.propertyName !== "transform") return;
-    const updatedPos = getElementPosition(source.el);
+  fromSink.onComplete(() => (battleState.heroes[index].animating = false));
+  toSink.chain(fromSink);
 
-    if (updatedPos.left === sourcePos.left && updatedPos.top === sourcePos.top) {
-      source.el.removeEventListener("transitionend", translateCallback);
-      return;
-    }
+  source.wait = 0;
+  battleState.heroes[index].animating = true;
 
-    setTranslate(source.el, 0, 0);
-  }
+  toSink.start();
 }
 
 function updateTimers(increase) {
-  state.heroes.forEach(hero => {
+  state.heroes.forEach((hero, i) => {
+    if (battleState.heroes[i].animating) return;
     hero.wait = Math.min(hero.wait + increase, 100);
   });
 }
@@ -172,6 +172,7 @@ function wait() {
 }
 
 function update() {
+  TWEEN.update();
   const timeIncrease = wait() ? 0 : 0.1;
   updateTimers(timeIncrease);
   state.heroes.forEach((hero, i) => {
@@ -187,6 +188,7 @@ function draw() {
   requestAnimationFrame(draw);
   if (battleState.paused) return;
   update();
+
   waitFillingEls.forEach((el, i) => updateWaitWidth(el, state.heroes[i].wait));
   hpEls.forEach((el, i) =>
     updateIfDifferent(el, `${state.heroes[i].hp} / ${state.heroes[i].maxHp}`)
@@ -204,8 +206,12 @@ function config() {
   state.enemies.forEach((_, i) => {
     battleState.heroes[i] = { animating: false };
   });
+}
 
-  setOpacity(document.body, 1.0);
+function translateTween(el, x1, y1, x2, y2, speed = TRANSLATE_SPEED) {
+  return new TWEEN.Tween({ x: x1, y: y1 })
+    .to({ x: x2, y: y2 }, speed)
+    .onUpdate(({ x, y }) => setTranslate(el, x, y));
 }
 
 config();

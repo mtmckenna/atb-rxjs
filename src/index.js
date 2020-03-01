@@ -402,7 +402,7 @@ state.heroes.forEach((hero, i) => {
     unsetHeroReady(i);
   });
 
-  // Set hero as not raeady if dead
+  // Set hero as not ready if dead
   heroDead$.subscribe(() => unsetHeroReady(i));
 
   // Set hero as current hero

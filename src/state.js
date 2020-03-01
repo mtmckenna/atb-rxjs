@@ -43,7 +43,7 @@ const hero2 = {
   maxMp: 300,
   hp: 500,
   mp: 200,
-  wait: 89,
+  wait: 99,
   magic: magic2,
   items: [ether]
 };
