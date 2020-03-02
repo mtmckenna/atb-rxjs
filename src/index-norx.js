@@ -104,6 +104,7 @@ function performAction(el) {
 
 function selectHero(hero) {
   if (hero.wait < 100) return;
+  if (hero.hp <= 0) return;
   if (battleState.paused) return;
   const index = state.heroes.indexOf(hero);
   battleState.currentHero = hero;
@@ -160,10 +161,10 @@ function useAttack(source, sink) {
   toSink.start();
 }
 
-function updateTimers(increase) {
+function updateTimers() {
   state.heroes.forEach((hero, i) => {
     if (battleState.heroes[i].animating) return;
-    hero.wait = Math.min(hero.wait + increase, 100);
+    hero.wait = Math.min(hero.wait + 0.15, 100);
   });
 }
 
@@ -173,10 +174,9 @@ function wait() {
 
 function update() {
   TWEEN.update();
-  const timeIncrease = wait() ? 0 : 0.1;
-  updateTimers(timeIncrease);
+  if (!wait()) updateTimers();
   state.heroes.forEach((hero, i) => {
-    if (hero.wait < 100) {
+    if (hero.wait < 100 || hero.hp <= 0) {
       unsetHeroReady(i);
     } else {
       setHeroReady(i);
